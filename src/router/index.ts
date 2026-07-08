@@ -48,11 +48,6 @@ export const constantRoutes = [
     hidden: true
   },
   {
-    path: "/:pathMatch(.*)*",
-    component: () => import('@/views/error/404.vue'),
-    hidden: true
-  },
-  {
     path: '/401',
     component: () => import('@/views/error/401.vue'),
     hidden: true
@@ -89,6 +84,11 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    component: () => import('@/views/error/404.vue'),
+    hidden: true
   }
 ]
 
