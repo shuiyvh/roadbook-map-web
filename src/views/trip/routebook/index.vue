@@ -42,7 +42,8 @@
           <image-upload v-model="form.coverUrl" action="/common/minio/upload" :limit="1" :drag="false" :file-size="8" />
         </el-form-item>
         <el-form-item label="可见性"><el-select v-model="form.visibility" placeholder="请选择可见性" style="width: 100%"><el-option v-for="item in trip_routebook_visibility" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-        <el-form-item label="路线策略"><div class="form-grid"><el-select v-model="form.routeMode" placeholder="路线模式"><el-option v-for="item in trip_route_mode" :key="item.value" :label="item.label" :value="item.value" /></el-select><el-input v-model="form.routePolicy" placeholder="路线策略" /></div></el-form-item>
+        <el-form-item label="路线模式"><el-select v-model="form.routeMode" placeholder="请选择路线模式" style="width: 100%"><el-option v-for="item in trip_route_mode" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
+        <el-form-item label="规划策略"><el-input v-model="form.routePolicy" placeholder="请输入后端支持的路线规划策略，可不填" /></el-form-item>
         <el-form-item label="路书描述"><el-input v-model="form.description" type="textarea" :rows="4" placeholder="说明路线特点、天数和注意事项" /></el-form-item>
       </el-form></div>
       <template #footer><el-button :disabled="submitting" @click="dialogOpen = false">取消</el-button><el-button type="primary" :loading="submitting" @click="submit">保存</el-button></template>
@@ -72,7 +73,7 @@ const rules: Record<string, any[]> = {
 async function loadData(): Promise<void> { loading.value = true; loadError.value = false; try { const response = await listRoutebooks(query); rows.value = response.rows || []; total.value = response.total || 0 } catch (error) { loadError.value = true; console.warn('路书列表加载失败，请检查路书分页接口。', error) } finally { loading.value = false } }
 function search(): void { query.pageNum = 1; loadData() }
 function resetSearch(): void { query.title = undefined; query.status = undefined; query.visibility = undefined; query.routeMode = undefined; query.templateFlag = undefined; search() }
-function openCreate(): void { form.value = { visibility: 'PRIVATE', routeMode: 'DRIVING' }; dialogOpen.value = true; nextTick(() => formRef.value?.clearValidate()) }
+function openCreate(): void { form.value = { visibility: 'PRIVATE', routeMode: 'CAR' }; dialogOpen.value = true; nextTick(() => formRef.value?.clearValidate()) }
 function openRouteViewer(row: TripRoutebook): void { selectedRoutebook.value = row; routeViewerOpen.value = true }
 async function submit(): Promise<void> { await formRef.value?.validate(); submitting.value = true; try { await addRoutebook(form.value); ElMessage.success('创建成功'); dialogOpen.value = false; await loadData() } catch (error) { console.warn('路书创建失败，请检查表单和接口返回。', error) } finally { submitting.value = false } }
 async function copy(row: TripRoutebook): Promise<void> { await copyRoutebook(Number(row.id)); ElMessage.success('路书已复制'); await loadData() }
