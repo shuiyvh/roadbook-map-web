@@ -2,22 +2,26 @@
   <div class="sidebar-logo-container" :class="{ 'collapse': collapse }">
     <transition name="sidebarLogoFade">
       <router-link v-if="collapse" key="collapse" class="sidebar-logo-link" to="/">
-        <img v-if="logo" :src="logo" class="sidebar-logo" />
-        <h1 v-else class="sidebar-title">{{ title }}</h1>
+        <span class="brand-mark" aria-hidden="true">
+          <span class="brand-peak brand-peak-back"></span>
+          <span class="brand-peak brand-peak-front"></span>
+        </span>
       </router-link>
       <router-link v-else key="expand" class="sidebar-logo-link" to="/">
-        <img v-if="logo" :src="logo" class="sidebar-logo" />
-        <h1 class="sidebar-title">{{ title }}</h1>
+        <span class="brand-mark" aria-hidden="true">
+          <span class="brand-peak brand-peak-back"></span>
+          <span class="brand-peak brand-peak-front"></span>
+        </span>
+        <span class="brand-copy">
+          <strong>Roadbook</strong>
+          <small>{{ title }}</small>
+        </span>
       </router-link>
     </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import logo from '@/assets/logo/logo.png'
-import useSettingsStore from '@/store/modules/settings'
-import variables from '@/assets/styles/variables.module.scss'
-
 defineProps({
   collapse: {
     type: Boolean,
@@ -26,30 +30,6 @@ defineProps({
 })
 
 const title = import.meta.env.VITE_APP_TITLE
-const settingsStore = useSettingsStore()
-const sideTheme = computed(() => settingsStore.sideTheme)
-
-// 获取Logo背景色
-const getLogoBackground = computed(() => {
-  if (settingsStore.isDark) {
-    return 'var(--sidebar-bg)'
-  }
-  if (settingsStore.navType == 3) {
-    return variables.menuLightBg
-  }
-  return sideTheme.value === 'theme-dark' ? variables.menuBg : variables.menuLightBg
-})
-
-// 获取Logo文字颜色
-const getLogoTextColor = computed(() => {
-  if (settingsStore.isDark) {
-    return 'var(--sidebar-logo-text)'
-  }
-  if (settingsStore.navType == 3) {
-    return variables.menuLightText
-  }
-  return sideTheme.value === 'theme-dark' ? '#fff' : variables.menuLightText
-})
 </script>
 
 <style lang="scss" scoped>
@@ -64,39 +44,77 @@ const getLogoTextColor = computed(() => {
 
 .sidebar-logo-container {
   position: relative;
-  height: 50px;
-  line-height: 50px;
-  background: v-bind(getLogoBackground);
-  text-align: center;
+  height: var(--roadbook-header-height);
+  background: var(--sidebar-bg);
   overflow: hidden;
+  border-bottom: 1px solid var(--sidebar-border);
 
   & .sidebar-logo-link {
+    display: flex !important;
     height: 100%;
     width: 100%;
+    padding: 0 20px;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
 
-    & .sidebar-logo {
-      width: 32px;
-      height: 32px;
-      vertical-align: middle;
-      margin-right: 12px;
-    }
-
-    & .sidebar-title {
-      display: inline-block;
-      margin: 0;
-      color: v-bind(getLogoTextColor);
-      font-weight: 600;
-      line-height: 50px;
-      font-size: 14px;
-      font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
-      vertical-align: middle;
+    &:hover {
+      background: var(--menu-hover);
     }
   }
 
   &.collapse {
-    .sidebar-logo {
-      margin-right: 0px;
+    .sidebar-logo-link {
+      padding: 0;
+      justify-content: center;
     }
   }
+}
+
+.brand-mark {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 30px;
+  flex: 0 0 34px;
+}
+
+.brand-peak {
+  position: absolute;
+  bottom: 4px;
+  width: 25px;
+  height: 22px;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.brand-peak-back {
+  right: 0;
+  background: linear-gradient(145deg, #bda7fa, #8aa6ff);
+}
+
+.brand-peak-front {
+  left: 0;
+  bottom: 2px;
+  background: linear-gradient(145deg, #8aa6ff, #6b7bea);
+}
+
+.brand-copy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.brand-copy strong {
+  color: var(--roadbook-text-primary);
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.brand-copy small {
+  margin-top: 5px;
+  color: var(--roadbook-text-secondary);
+  font-size: 10px;
+  white-space: nowrap;
 }
 </style>

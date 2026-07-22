@@ -29,7 +29,7 @@
     <!-- 文件列表 -->
     <transition-group ref="uploadFileList" class="upload-file-list el-upload-list el-upload-list--text" name="el-fade-in-linear" tag="ul">
       <li :key="file.uid" class="el-upload-list__item ele-upload-list__item-content" v-for="(file, index) in fileList">
-        <el-link :href="`${baseUrl}${file.url}`" underline="never" target="_blank">
+        <el-link :href="resolveFileUrl(file.url)" underline="never" target="_blank">
           <span class="el-icon-document"> {{ getFileName(file.name) }} </span>
         </el-link>
         <div class="ele-upload-list__item-content-action">
@@ -56,7 +56,7 @@ const props = defineProps({
   // 上传接口地址
   action: {
     type: String,
-    default: "/common/upload"
+    default: "/common/minio/upload"
   },
   // 上传携带的参数
   data: {
@@ -169,7 +169,8 @@ function handleUploadError(err: Error): void {
 // 上传成功回调
 function handleUploadSuccess(res: UploadFileResult, file: any): void {
   if (res.code === 200) {
-    uploadList.value.push({ name: res.fileName, url: res.fileName })
+    // MinIO 返回的 url 已包含协议、域名和对象路径，保存时不得再次拼接网关地址。
+    uploadList.value.push({ name: res.originalFilename || res.newFileName, url: res.url })
     uploadedSuccessfully()
   } else {
     number.value--
@@ -205,6 +206,11 @@ function getFileName(name: string): string {
   } else {
     return name
   }
+}
+
+/** 完整地址直接访问，兼容历史数据中仍存在的相对路径。 */
+function resolveFileUrl(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : `${baseUrl}${url}`
 }
 
 // 对象转成指定字符串分隔

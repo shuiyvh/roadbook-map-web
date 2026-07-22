@@ -10,10 +10,20 @@ interface ImportMetaEnv {
   readonly VITE_APP_TITLE: string
   readonly VITE_APP_BASE_API: string
   readonly VITE_APP_ENV: string
+  readonly VITE_AMAP_JS_API_KEY?: string
+  readonly VITE_AMAP_SECURITY_JS_CODE?: string
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv
+}
+
+interface Window {
+  AMap?: any
+  _AMapSecurityConfig?: {
+    securityJsCode?: string
+    serviceHost?: string
+  }
 }
 
 // element-plus

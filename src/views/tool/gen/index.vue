@@ -126,8 +126,8 @@
       v-model:limit="queryParams.pageSize"
       @pagination="getList"
     />
-    <!-- 预览界面 -->
-    <el-dialog :title="preview.title" v-model="preview.open" width="80%" top="5vh" append-to-body class="scrollbar">
+    <!-- 代码文件较宽，使用大尺寸抽屉并保留生成列表上下文。 -->
+    <el-drawer v-model="preview.open" :title="preview.title" direction="rtl" size="min(1080px, 96vw)" append-to-body class="app-drawer app-drawer--preview">
       <el-tabs v-model="preview.activeName">
         <el-tab-pane
           v-for="(value, key) in preview.data"
@@ -139,7 +139,7 @@
           <pre>{{ value }}</pre>
         </el-tab-pane>
       </el-tabs>
-    </el-dialog>
+    </el-drawer>
     <import-table ref="importRef" @ok="handleQuery" />
     <create-table ref="createRef" @ok="handleQuery" />
   </div>

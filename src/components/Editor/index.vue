@@ -36,7 +36,7 @@ import type { UploadFileResult } from '@/types/api/common'
 const { proxy } = getCurrentInstance()
 
 const quillEditorRef = ref()
-const uploadUrl = ref(import.meta.env.VITE_APP_BASE_API + "/common/upload") // 上传的图片服务器地址
+const uploadUrl = ref(import.meta.env.VITE_APP_BASE_API + "/common/minio/upload") // MinIO 图片上传地址
 const headers = ref({
   Authorization: "Bearer " + getToken()
 })
@@ -158,8 +158,8 @@ function handleUploadSuccess(res: UploadFileResult, file: File) {
     let quill = toRaw(quillEditorRef.value).getQuill()
     // 获取光标位置
     let length = quill.selection.savedRange.index
-    // 插入图片，res.url为服务器返回的图片链接地址
-    quill.insertEmbed(length, "image", import.meta.env.VITE_APP_BASE_API + res.fileName)
+    // MinIO 返回完整访问地址，直接插入，避免网关地址与对象地址重复拼接。
+    quill.insertEmbed(length, "image", res.url)
     // 调整光标到最后
     quill.setSelection(length + 1)
   } else {

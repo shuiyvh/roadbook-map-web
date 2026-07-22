@@ -82,6 +82,89 @@
   padding: 10px 20px 0;
 }
 
+/**
+ * 业务抽屉统一承载复杂编辑、详情和列表选择。
+ * 标题、内容和操作区分别固定层级，避免长表单滚动时丢失当前任务与提交入口；
+ * 宽度由具体场景通过 size 控制，窄屏统一占满视口。
+ */
+.app-drawer {
+  .el-drawer__header {
+    flex-shrink: 0;
+    min-height: 64px;
+    margin-bottom: 0;
+    padding: 16px 24px;
+    color: var(--el-text-color-primary);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+
+  .el-drawer__title {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 24px;
+  }
+
+  .el-drawer__body {
+    padding: 24px;
+    overflow-x: hidden;
+  }
+
+  .el-drawer__footer {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    background: var(--el-bg-color);
+    border-top: 1px solid var(--el-border-color-lighter);
+  }
+
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .dialog-footer .el-button + .el-button {
+    margin-left: 0;
+  }
+}
+
+.app-drawer--table {
+  .el-drawer__body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pagination-container {
+    position: static !important;
+    margin: 16px 0 0;
+    padding: 0 !important;
+  }
+}
+
+.app-drawer--preview .el-drawer__body {
+  padding-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .app-drawer {
+    width: 100% !important;
+
+    .el-drawer__header,
+    .el-drawer__footer {
+      padding-right: 16px;
+      padding-left: 16px;
+    }
+
+    .el-drawer__body {
+      padding: 16px;
+    }
+
+    /* 小屏抽屉中的双列表单改为单列，避免输入控件被挤压。 */
+    .el-col-12 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+}
+
 .el-table {
   .el-table__header-wrapper, .el-table__fixed-header-wrapper {
     th {

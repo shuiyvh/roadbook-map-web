@@ -1,0 +1,104 @@
+/**
+ * 智能路书业务页面设计变量与通用模板。
+ * 业务页面应优先使用这些变量，避免直接写死背景、边框和状态颜色。
+ */
+:root {
+  --roadbook-primary: #5b7cfa;
+  --roadbook-secondary: #a86ce8;
+  --roadbook-success: #35b7c9;
+  --roadbook-warning: #f59e6d;
+  --roadbook-danger: #ef5b5b;
+  --roadbook-page-bg: #f5f7fc;
+  --roadbook-panel-bg: #ffffff;
+  --roadbook-panel-muted: #f7f9fd;
+  --roadbook-border: #edf0f7;
+  --roadbook-text-primary: #182033;
+  --roadbook-text-regular: #4f5b73;
+  --roadbook-text-secondary: #8a94a8;
+  --roadbook-shadow: 0 10px 30px rgba(80, 96, 140, 0.06);
+  --roadbook-radius: 8px;
+  --roadbook-header-height: 64px;
+  --roadbook-tags-height: 34px;
+  --roadbook-space-1: 8px;
+  --roadbook-space-2: 16px;
+  --roadbook-space-3: 24px;
+  --roadbook-space-4: 32px;
+}
+
+html.dark {
+  --roadbook-page-bg: #101418;
+  --roadbook-panel-bg: #171d23;
+  --roadbook-panel-muted: #1d252d;
+  --roadbook-border: #27313a;
+  --roadbook-text-primary: #f3f4f6;
+  --roadbook-text-regular: #d1d5db;
+  --roadbook-text-secondary: #9ca3af;
+  --roadbook-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+body {
+  color: var(--roadbook-text-regular);
+  background: var(--roadbook-page-bg);
+}
+
+/** 列表页的筛选区和数据区保持同一视觉层级，避免多层卡片嵌套。 */
+.business-list-template {
+  display: grid;
+  gap: var(--roadbook-space-2);
+}
+
+.business-filter-panel,
+.business-content-panel,
+.business-form-panel,
+.business-detail-main,
+.business-detail-aside {
+  padding: var(--roadbook-space-3);
+  border: 1px solid var(--roadbook-border);
+  border-radius: var(--roadbook-radius);
+  background: var(--roadbook-panel-bg);
+  box-shadow: var(--roadbook-shadow);
+}
+
+.business-detail-template {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: var(--roadbook-space-3);
+  align-items: start;
+}
+
+.business-form-template {
+  display: grid;
+  gap: var(--roadbook-space-2);
+  max-width: 960px;
+}
+
+.business-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--roadbook-space-1);
+  padding: var(--roadbook-space-2) var(--roadbook-space-3);
+  border: 1px solid var(--roadbook-border);
+  border-radius: var(--roadbook-radius);
+  background: color-mix(in srgb, var(--roadbook-panel-bg) 94%, transparent);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 900px) {
+  .business-detail-template {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .business-filter-panel,
+  .business-content-panel,
+  .business-form-panel,
+  .business-detail-main,
+  .business-detail-aside {
+    padding: var(--roadbook-space-2);
+  }
+}

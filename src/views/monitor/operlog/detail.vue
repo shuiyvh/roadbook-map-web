@@ -1,5 +1,5 @@
 <template>
-  <el-dialog title="操作日志详细" v-model="dialogVisible" width="780px" append-to-body @close="$emit('update:visible', false)">
+  <el-drawer v-model="dialogVisible" title="操作日志详细" direction="rtl" size="min(780px, 94vw)" append-to-body class="app-drawer" @close="$emit('update:visible', false)">
     <div class="detail-wrap">
       <!-- 基本信息 -->
       <div class="detail-card">
@@ -108,7 +108,7 @@
       </div>
 
     </div>
-  </el-dialog>
+  </el-drawer>
 </template>
 
 <script setup lang="ts">

@@ -109,8 +109,8 @@
          @pagination="getList"
       />
 
-      <!-- 添加或修改公告对话框 -->
-      <el-dialog :title="title" v-model="open" width="780px" append-to-body>
+      <!-- 公告编辑包含富文本内容，使用宽抽屉避免打断列表操作流程。 -->
+      <el-drawer v-model="open" :title="title" direction="rtl" size="min(800px, 94vw)" append-to-body class="app-drawer">
          <el-form ref="noticeRef" :model="form" :rules="rules" label-width="80px">
             <el-row>
                <el-col :span="12">
@@ -154,7 +154,7 @@
                <el-button @click="cancel">取 消</el-button>
             </div>
          </template>
-      </el-dialog>
+      </el-drawer>
       <notice-detail-view ref="noticeViewRef" />
       <read-users-dialog ref="readUsersRef" />
    </div>

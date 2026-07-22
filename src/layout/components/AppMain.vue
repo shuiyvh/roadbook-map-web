@@ -37,8 +37,7 @@ function addIframe(): void {
 
 <style lang="scss" scoped>
 .app-main {
-  /* 50= navbar  50  */
-  min-height: calc(100vh - 50px);
+  min-height: calc(100vh - var(--roadbook-header-height));
   width: 100%;
   position: relative;
   overflow: hidden;
@@ -47,7 +46,7 @@ function addIframe(): void {
 .fixed-header + .app-main {
   overflow-y: auto;
   scrollbar-gutter: auto;
-  height: calc(100vh - 50px);
+  height: calc(100vh - var(--roadbook-header-height));
   min-height: 0px;
 }
 
@@ -56,18 +55,17 @@ function addIframe(): void {
 }
 
 .fixed-header + .app-main {
-  margin-top: 50px;
+  margin-top: var(--roadbook-header-height);
 }
 
 .hasTagsView {
   .app-main {
-    /* 84 = navbar + tags-view = 50 + 34 */
-    min-height: calc(100vh - 84px);
+    min-height: calc(100vh - var(--roadbook-header-height) - var(--roadbook-tags-height));
   }
 
   .fixed-header + .app-main {
-    margin-top: 84px;
-    height: calc(100vh - 84px);
+    margin-top: calc(var(--roadbook-header-height) + var(--roadbook-tags-height));
+    height: calc(100vh - var(--roadbook-header-height) - var(--roadbook-tags-height));
     min-height: 0px;
   }
 }
@@ -92,15 +90,15 @@ function addIframe(): void {
     .fixed-header + .app-main {
       padding-bottom: max(17px, calc(constant(safe-area-inset-bottom) + 10px));
       padding-bottom: max(17px, calc(env(safe-area-inset-bottom) + 10px));
-      height: calc(100svh - 50px);
-      height: calc(100dvh - 50px);
+      height: calc(100svh - var(--roadbook-header-height));
+      height: calc(100dvh - var(--roadbook-header-height));
     }
 
     .hasTagsView .fixed-header + .app-main {
       padding-bottom: max(17px, calc(constant(safe-area-inset-bottom) + 10px));
       padding-bottom: max(17px, calc(env(safe-area-inset-bottom) + 10px));
-      height: calc(100svh - 84px);
-      height: calc(100dvh - 84px);
+      height: calc(100svh - var(--roadbook-header-height) - var(--roadbook-tags-height));
+      height: calc(100dvh - var(--roadbook-header-height) - var(--roadbook-tags-height));
     }
   }
 }

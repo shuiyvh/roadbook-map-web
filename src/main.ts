@@ -28,6 +28,7 @@ import './permission' // permission control
 import { useDict } from '@/utils/dict'
 import { getConfigKey } from "@/api/system/config"
 import { parseTime, resetForm, addDateRange, handleTree, selectDictLabel, selectDictLabels } from '@/utils/ruoyi'
+import { setupAmapSecurityConfig } from '@/config/amap'
 
 // 分页组件
 import Pagination from '@/components/Pagination/index.vue'
@@ -43,6 +44,9 @@ import ImageUpload from "@/components/ImageUpload/index.vue"
 import ImagePreview from "@/components/ImagePreview/index.vue"
 // 字典标签组件
 import DictTag from '@/components/DictTag/index.vue'
+
+// 必须在后续地图脚本加载前写入高德安全配置。
+setupAmapSecurityConfig()
 
 const app = createApp(App)
 

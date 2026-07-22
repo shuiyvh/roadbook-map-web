@@ -22,3 +22,9 @@ export function useDict(...args: string[]) {
     return toRefs(res.value)
   })()
 }
+
+/** 根据字典值获取展示标签，未知值保留原编码，避免异步加载或脏数据导致空白。 */
+export function getDictLabel(options: any[] | undefined, value: unknown, fallback = '--'): string {
+  if (value === null || value === undefined || value === '') return fallback
+  return options?.find(option => String(option.value) === String(value))?.label || String(value)
+}

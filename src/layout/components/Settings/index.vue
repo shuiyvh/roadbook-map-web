@@ -125,7 +125,7 @@
 
 <script setup lang="ts">
 import useAppStore from '@/store/modules/app'
-import useSettingsStore from '@/store/modules/settings'
+import useSettingsStore, { LAYOUT_DESIGN_VERSION } from '@/store/modules/settings'
 import usePermissionStore from '@/store/modules/permission'
 import { handleThemeStyle } from '@/utils/theme'
 
@@ -191,6 +191,7 @@ function saveSetting(): void {
     proxy.$cache.local.remove('tags-view-visited')
   }
   const layoutSetting = {
+    "designVersion": LAYOUT_DESIGN_VERSION,
     "navType": storeSettings.value.navType,
     "tagsView": storeSettings.value.tagsView,
     "tagsIcon": storeSettings.value.tagsIcon,

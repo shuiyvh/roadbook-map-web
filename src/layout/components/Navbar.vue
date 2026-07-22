@@ -8,10 +8,10 @@
       <top-bar id="topbar-container" class="topbar-container" />
     </template>
 
+    <header-search v-if="appStore.device !== 'mobile'" id="header-search" class="navbar-search" />
+
     <div class="right-menu">
       <template v-if="appStore.device !== 'mobile'">
-        <header-search id="header-search" class="right-menu-item" />
-
         <screenfull id="screenfull" class="right-menu-item hover-effect" />
 
         <el-tooltip content="主题模式" effect="dark" placement="bottom">
@@ -33,7 +33,11 @@
       <el-dropdown @command="handleCommand" class="avatar-container right-menu-item hover-effect" trigger="hover">
         <div class="avatar-wrapper">
           <img :src="userStore.avatar" class="user-avatar" />
-          <span class="user-nickname"> {{ userStore.nickName }} </span>
+          <span class="user-copy">
+            <strong>{{ userStore.nickName || userStore.name }}</strong>
+            <small>{{ userRoleLabel }}</small>
+          </span>
+          <span class="user-chevron" aria-hidden="true">⌄</span>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
@@ -70,7 +74,7 @@ import useAppStore from '@/store/modules/app'
 import useUserStore from '@/store/modules/user'
 import useLockStore from '@/store/modules/lock'
 import useSettingsStore from '@/store/modules/settings'
-import HeaderNotice from './HeaderNotice'
+import HeaderNotice from './HeaderNotice/index.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -78,6 +82,7 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 const lockStore = useLockStore()
 const settingsStore = useSettingsStore()
+const userRoleLabel = computed(() => userStore.roles.includes('admin') ? '管理员' : '工作台用户')
 
 function toggleSideBar(): void {
   appStore.toggleSideBar()
@@ -291,6 +296,135 @@ async function toggleTheme(event?: MouseEvent): Promise<void> {
         }
       }
     }
+  }
+}
+
+/* 参考设计图的轻量顶部工具栏。 */
+.navbar {
+  height: var(--roadbook-header-height);
+  padding: 0 18px 0 8px;
+  overflow: visible;
+  border-bottom: 1px solid var(--roadbook-border);
+  background: var(--navbar-bg);
+  box-shadow: none;
+
+  .hamburger-container {
+    width: 44px;
+    margin-right: 4px;
+    border-radius: 8px;
+    color: var(--roadbook-text-secondary);
+
+    &:hover {
+      background: var(--navbar-hover);
+      color: var(--roadbook-text-primary);
+    }
+  }
+
+  .navbar-search {
+    position: absolute;
+    left: 50%;
+    width: min(320px, 28vw);
+    transform: translateX(-50%);
+  }
+
+  .right-menu {
+    height: 100%;
+    line-height: normal;
+    gap: 4px;
+
+    .right-menu-item {
+      display: flex;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px;
+      color: var(--roadbook-text-regular);
+      font-size: 17px;
+
+      &.hover-effect:hover {
+        background: var(--navbar-hover);
+        color: var(--roadbook-primary);
+      }
+    }
+
+    .avatar-container {
+      width: auto;
+      min-width: 132px;
+      height: 48px;
+      margin-left: 6px;
+      padding: 0 8px;
+      justify-content: flex-start;
+    }
+
+    .avatar-container .avatar-wrapper {
+      position: static;
+      display: flex;
+      width: 100%;
+      height: 48px;
+      margin: 0;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .avatar-container .avatar-wrapper .user-avatar {
+      width: 34px;
+      height: 34px;
+      margin: 0;
+      flex: 0 0 34px;
+      border: 2px solid var(--roadbook-panel-bg);
+      box-shadow: 0 0 0 1px var(--roadbook-border);
+    }
+  }
+}
+
+.user-copy {
+  display: grid;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.user-copy strong {
+  overflow: hidden;
+  color: var(--roadbook-text-primary);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-copy small {
+  margin-top: 4px;
+  color: var(--roadbook-text-secondary);
+  font-size: 10px;
+}
+
+.user-chevron {
+  margin-left: auto;
+  color: var(--roadbook-text-secondary);
+  font-size: 13px;
+}
+
+@media (max-width: 1180px) {
+  .navbar .navbar-search {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .navbar {
+    padding-right: 8px;
+  }
+
+  .navbar .right-menu .avatar-container {
+    min-width: 48px;
+    padding: 0 7px;
+  }
+
+  .user-copy,
+  .user-chevron {
+    display: none;
   }
 }
 </style>

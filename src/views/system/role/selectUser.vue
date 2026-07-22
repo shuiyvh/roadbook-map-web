@@ -1,6 +1,6 @@
 <template>
    <!-- 授权用户 -->
-   <el-dialog title="选择用户" v-model="visible" width="800px" top="5vh" append-to-body>
+   <el-drawer v-model="visible" title="选择用户" direction="rtl" size="min(880px, 94vw)" append-to-body class="app-drawer app-drawer--table">
       <el-form :model="queryParams" ref="queryRef" :inline="true">
          <el-form-item label="用户名称" prop="userName">
             <el-input
@@ -57,7 +57,7 @@
             <el-button @click="visible = false">取 消</el-button>
          </div>
       </template>
-   </el-dialog>
+   </el-drawer>
 </template>
 
 <script setup lang="ts" name="SelectUser">

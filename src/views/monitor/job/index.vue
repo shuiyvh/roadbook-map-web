@@ -138,8 +138,8 @@
          @pagination="getList"
       />
 
-      <!-- 添加或修改定时任务对话框 -->
-      <el-dialog :title="title" v-model="open" width="820px" append-to-body>
+      <!-- 定时任务配置项较多，使用抽屉承载主编辑流程；Cron 生成器仍保留轻量弹窗。 -->
+      <el-drawer v-model="open" :title="title" direction="rtl" size="min(840px, 94vw)" append-to-body class="app-drawer">
          <el-form ref="jobRef" :model="form" :rules="rules" label-width="120px">
             <el-row>
                <el-col :span="12">
@@ -227,7 +227,7 @@
                <el-button @click="cancel">取 消</el-button>
             </div>
          </template>
-      </el-dialog>
+      </el-drawer>
 
      <el-dialog title="Cron表达式生成器" v-model="openCron" append-to-body destroy-on-close>
        <crontab ref="crontabRef" @hide="openCron=false" @fill="crontabFill" :expression="expression"></crontab>

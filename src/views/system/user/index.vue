@@ -89,8 +89,8 @@
         <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
       </div>
     </div>
-    <!-- 添加或修改用户配置对话框 -->
-    <el-dialog :title="title" v-model="open" width="600px" append-to-body>
+    <!-- 用户字段较多，使用抽屉保留列表上下文并提供稳定的纵向编辑空间。 -->
+    <el-drawer v-model="open" :title="title" direction="rtl" size="min(680px, 92vw)" append-to-body class="app-drawer">
       <el-form :model="form" :rules="rules" ref="userRef" label-width="80px">
         <el-row>
           <el-col :span="12">
@@ -174,7 +174,7 @@
           <el-button @click="cancel">取 消</el-button>
         </div>
       </template>
-    </el-dialog>
+    </el-drawer>
 
     <!-- 用户详情抽屉 -->
     <user-view-drawer ref="userViewRef" />

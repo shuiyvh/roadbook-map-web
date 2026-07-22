@@ -9,6 +9,23 @@ const toggleDark = useToggle(isDark)
 const { sideTheme, showSettings, navType, tagsView, tagsViewPersist, tagsIcon, tagsViewStyle, fixedHeader, sidebarLogo, dynamicTitle, footerVisible, footerContent } = defaultSettings
 
 const storageSetting = JSON.parse(localStorage.getItem('layout-setting') || '{}') || {} 
+export const LAYOUT_DESIGN_VERSION = 'roadbook-shell-20260722'
+
+/**
+ * 旧版布局设置会把深色若依侧栏保存在浏览器中，仅修改默认值无法生效。
+ * 设计版本变化时只迁移框架视觉相关配置，后续用户仍可在布局设置中自行调整。
+ */
+if (storageSetting.designVersion !== LAYOUT_DESIGN_VERSION) {
+  Object.assign(storageSetting, {
+    designVersion: LAYOUT_DESIGN_VERSION,
+    theme: '#5B7CFA',
+    sideTheme: 'theme-light',
+    navType: 1,
+    tagsView: false,
+    sidebarLogo: true
+  })
+  localStorage.setItem('layout-setting', JSON.stringify(storageSetting))
+}
 
 interface SettingsState {
   title: string

@@ -10,19 +10,19 @@ $panGreen: #30B08F;
 
 // 默认主题变量
 $menuText: #bfcbd9;
-$menuActiveText: #409eff;
+$menuActiveText: #5b7cfa;
 $menuBg: #1a1f2e;
 $menuHover: #263445;
 
 // 浅色主题theme-light
 $menuLightBg: #ffffff;
-$menuLightHover: #f0f1f5;
-$menuLightText: #303133;
-$menuLightActiveText: #409EFF;
+$menuLightHover: #f5f7ff;
+$menuLightText: #4f5b73;
+$menuLightActiveText: #5b7cfa;
 
 // 基础变量
-$base-sidebar-width: 200px;
-$sideBarWidth: 200px;
+$base-sidebar-width: 220px;
+$sideBarWidth: 220px;
 
 // 菜单暗色变量
 $base-menu-color: rgba(255,255,255,.65);
@@ -68,12 +68,15 @@ $--color-info: #909399;
 // CSS变量定义
 :root {
   /* 亮色模式变量 */
-  --sidebar-bg: #{$menuBg};
-  --sidebar-text: #{$menuText};
-  --menu-hover: #{$menuHover};
+  --sidebar-bg: #{$menuLightBg};
+  --sidebar-text: #{$menuLightText};
+  --sidebar-border: #edf0f7;
+  --menu-hover: #{$menuLightHover};
+  --menu-active-text: #{$menuLightActiveText};
   
   --navbar-bg: #ffffff;
-  --navbar-text: #303133;
+  --navbar-text: #4f5b73;
+  --navbar-hover: #f5f7ff;
   
   /* splitpanes default-theme 变量 */
   --splitpanes-default-bg: #ffffff;
@@ -98,6 +101,7 @@ html.dark {
   /* 侧边栏 */
   --sidebar-bg: #141414;
   --sidebar-text: #ffffff;
+  --sidebar-border: #27313a;
   --menu-hover: #2d2d2d;
   --menu-active-text: #{$menuActiveText};
 

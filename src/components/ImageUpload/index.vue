@@ -64,7 +64,7 @@ const props = defineProps({
   // 上传接口地址
   action: {
     type: String,
-    default: "/common/upload"
+    default: "/common/minio/upload"
   },
   // 上传携带的参数
   data: {
@@ -181,7 +181,8 @@ function handleExceed(): void {
 // 上传成功回调
 function handleUploadSuccess(res: UploadFileResult, file: any): void {
   if (res.code === 200) {
-    uploadList.value.push({ name: res.fileName, url: res.fileName })
+    // MinIO 接口返回可直接访问的完整 URL，必须原样保存，不能退回对象半路径。
+    uploadList.value.push({ name: res.originalFilename || res.newFileName, url: res.url })
     uploadedSuccessfully()
   } else {
     number.value--
@@ -232,7 +233,7 @@ function listToString(list: UploadImageItem[], separator?: string): string {
   separator = separator || ","
   for (let i in list) {
     if (undefined !== list[i].url && list[i].url.indexOf("blob:") !== 0) {
-      strs += list[i].url.replace(baseUrl, "") + separator
+      strs += list[i].url + separator
     }
   }
   return strs != "" ? strs.substr(0, strs.length - 1) : ""

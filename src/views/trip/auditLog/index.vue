@@ -1,0 +1,10 @@
+<template><readonly-log-page title="业务审计日志" description="查询关键业务动作、执行结果和失败原因。" :query-fields="queryFields" :table-fields="tableFields" :detail-fields="detailFields" :list-api="listAuditLogs" :get-api="getAuditLog" /></template>
+<script setup lang="ts" name="TripAuditLog">
+import ReadonlyLogPage from '@/views/trip/shared/ReadonlyLogPage.vue'
+import type { CrudField, DetailField } from '@/views/trip/shared/types'
+import { getAuditLog, listAuditLogs } from '@/api/trip/auditLog'
+const { trip_audit_operation_type, trip_audit_business_type, trip_call_result_status, trip_client_type } = useDict('trip_audit_operation_type', 'trip_audit_business_type', 'trip_call_result_status', 'trip_client_type')
+const queryFields = computed<CrudField[]>(() => [{ prop: 'operationType', label: '操作类型', options: trip_audit_operation_type.value }, { prop: 'businessType', label: '业务类型', options: trip_audit_business_type.value }, { prop: 'userName', label: '操作账号' }, { prop: 'resultStatus', label: '执行结果', options: trip_call_result_status.value }])
+const tableFields = computed<CrudField[]>(() => [{ prop: 'operationName', label: '操作名称', width: 150 }, { prop: 'businessType', label: '业务类型', options: trip_audit_business_type.value }, { prop: 'userName', label: '操作账号' }, { prop: 'resultStatus', label: '结果', options: trip_call_result_status.value }, { prop: 'operationSummary', label: '操作摘要', width: 220 }, { prop: 'createTime', label: '操作时间', width: 170 }])
+const detailFields = computed<DetailField[]>(() => [{ prop: 'id', label: '日志 ID' }, { prop: 'operationType', label: '操作类型', options: trip_audit_operation_type.value }, { prop: 'operationName', label: '操作名称' }, { prop: 'businessType', label: '业务类型', options: trip_audit_business_type.value }, { prop: 'businessId', label: '业务 ID' }, { prop: 'userName', label: '操作账号' }, { prop: 'resultStatus', label: '执行结果', options: trip_call_result_status.value }, { prop: 'clientType', label: '客户端', options: trip_client_type.value }, { prop: 'operationSummary', label: '操作摘要', span: 2 }, { prop: 'failureReason', label: '失败原因', span: 2 }, { prop: 'extraInfo', label: '扩展信息', span: 2 }, { prop: 'createTime', label: '操作时间' }])
+</script>

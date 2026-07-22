@@ -1,6 +1,10 @@
 <template>
   <div class="header-search">
-    <svg-icon class-name="search-icon" icon-class="search" @click.stop="click" />
+    <button type="button" class="search-trigger" aria-label="打开菜单搜索" @click.stop="click">
+      <svg-icon class-name="search-icon" icon-class="search" />
+      <span>搜索路书、点位、用户...</span>
+      <kbd>⌘K</kbd>
+    </button>
     <el-dialog
       v-model="show"
       width="600"
@@ -236,8 +240,20 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+function handleGlobalShortcut(event: KeyboardEvent): void {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    click()
+  }
+}
+
 onMounted(() => {
   searchPool.value = generateRoutes(routes.value)
+  window.addEventListener('keydown', handleGlobalShortcut)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleGlobalShortcut)
 })
 
 watch(searchPool, (list: SearchItem[]) => {
@@ -261,11 +277,56 @@ watch(searchPool, (list: SearchItem[]) => {
 }
 
 .header-search {
+  width: 100%;
+
   .search-icon {
-    cursor: pointer;
-    font-size: 18px;
+    flex: 0 0 auto;
+    font-size: 15px;
     vertical-align: middle;
   }
+}
+
+.search-trigger {
+  display: flex;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px 0 13px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--roadbook-border);
+  border-radius: 12px;
+  color: var(--roadbook-text-secondary);
+  background: var(--roadbook-panel-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.search-trigger:hover,
+.search-trigger:focus-visible {
+  border-color: color-mix(in srgb, var(--roadbook-primary) 38%, var(--roadbook-border));
+  background: var(--roadbook-panel-bg);
+  box-shadow: 0 4px 16px rgba(80, 96, 140, 0.08);
+  outline: none;
+}
+
+.search-trigger span {
+  overflow: hidden;
+  flex: 1;
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-trigger kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--roadbook-border);
+  border-radius: 5px;
+  color: var(--roadbook-text-secondary);
+  background: var(--roadbook-panel-bg);
+  font-family: inherit;
+  font-size: 10px;
 }
 
 .result-count {

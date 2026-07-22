@@ -1,0 +1,160 @@
+{
+  "name": "Trip",
+  "path": "/trip",
+  "hidden": false,
+  "redirect": "noRedirect",
+  "component": "Layout",
+  "alwaysShow": true,
+  "meta": {
+    "title": "路书业务",
+    "icon": "guide",
+    "noCache": false,
+    "link": null
+  },
+  "children": [
+    {
+      "name": "TripRoutebook",
+      "path": "routebook",
+      "hidden": false,
+      "component": "trip/routebook/index",
+      "meta": {
+        "title": "路书管理",
+        "icon": "map",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripMap",
+      "path": "map",
+      "hidden": false,
+      "component": "trip/map/index",
+      "meta": {
+        "title": "地图服务",
+        "icon": "location",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripShare",
+      "path": "share",
+      "hidden": false,
+      "component": "trip/share/index",
+      "meta": {
+        "title": "分享管理",
+        "icon": "share",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripInvite",
+      "path": "invite",
+      "hidden": false,
+      "component": "trip/invite/index",
+      "meta": {
+        "title": "邀请管理",
+        "icon": "peoples",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripJourney",
+      "path": "journey",
+      "hidden": false,
+      "component": "trip/journey/index",
+      "meta": {
+        "title": "出行管理",
+        "icon": "guide",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripPreference",
+      "path": "preferences",
+      "hidden": false,
+      "component": "trip/preference/index",
+      "meta": {
+        "title": "推荐偏好",
+        "icon": "star",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripSearchSource",
+      "path": "search-sources",
+      "hidden": false,
+      "component": "trip/searchSource/index",
+      "meta": {
+        "title": "搜索站点",
+        "icon": "search",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripPreferenceSourceRel",
+      "path": "preference-source-rel",
+      "hidden": false,
+      "component": "trip/preferenceSourceRel/index",
+      "meta": {
+        "title": "偏好站点绑定",
+        "icon": "tree-table",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripSearchTemplate",
+      "path": "search-templates",
+      "hidden": false,
+      "component": "trip/searchTemplate/index",
+      "meta": {
+        "title": "搜索模板",
+        "icon": "example",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripRecommend",
+      "path": "recommend",
+      "hidden": false,
+      "component": "trip/recommend/index",
+      "meta": {
+        "title": "推荐搜索",
+        "icon": "education",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripAuditLog",
+      "path": "audit-logs",
+      "hidden": false,
+      "component": "trip/auditLog/index",
+      "meta": {
+        "title": "业务审计日志",
+        "icon": "log",
+        "noCache": false,
+        "link": null
+      }
+    },
+    {
+      "name": "TripCallLog",
+      "path": "call-logs",
+      "hidden": false,
+      "component": "trip/callLog/index",
+      "meta": {
+        "title": "第三方调用日志",
+        "icon": "monitor",
+        "noCache": false,
+        "link": null
+      }
+    }
+  ]
+}

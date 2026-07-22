@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="visible" :title="`「${noticeTitle}」已读用户`" width="760px" top="6vh" append-to-body @close="handleClose">
+  <el-drawer v-model="visible" :title="`「${noticeTitle}」已读用户`" direction="rtl" size="min(820px, 94vw)" append-to-body class="app-drawer app-drawer--table" @close="handleClose">
     <el-form ref="queryRef" :model="queryParams" size="small" :inline="true" style="margin-bottom: 4px;">
       <el-form-item prop="searchValue">
         <el-input
@@ -42,7 +42,7 @@
       @pagination="getList"
       style="padding: 6px 0px;"
     />
-  </el-dialog>
+  </el-drawer>
 </template>
 
 <script setup lang="ts" name="ReadUsers">

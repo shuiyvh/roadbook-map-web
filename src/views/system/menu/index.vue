@@ -100,8 +100,8 @@
          </el-table-column>
       </el-table>
 
-      <!-- 添加或修改菜单对话框 -->
-      <el-dialog :title="title" v-model="open" width="680px" append-to-body>
+      <!-- 菜单配置包含大量条件字段，抽屉可在编辑时持续保留菜单树上下文。 -->
+      <el-drawer v-model="open" :title="title" direction="rtl" size="min(760px, 92vw)" append-to-body class="app-drawer">
          <el-form ref="menuRef" :model="form" :rules="rules" label-width="100px">
             <el-row>
                <el-col :span="24">
@@ -301,7 +301,7 @@
                <el-button @click="cancel">取 消</el-button>
             </div>
          </template>
-      </el-dialog>
+      </el-drawer>
    </div>
 </template>
 

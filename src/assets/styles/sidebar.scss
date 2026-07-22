@@ -46,7 +46,7 @@
 
     &.has-logo {
       .el-scrollbar {
-        height: calc(100% - 50px);
+        height: calc(100% - var(--roadbook-header-height));
       }
     }
 
@@ -324,5 +324,155 @@
       background: #99a9bf;
       border-radius: 20px;
     }
+  }
+}
+
+/* 智能路书工作台导航：以轻量分组和圆角选中态替代模板整行色块。 */
+#app .sidebar-container {
+  border-right: 1px solid var(--sidebar-border);
+  box-shadow: none;
+
+  .el-menu-item,
+  .el-sub-menu__title {
+    width: calc(100% - 24px);
+    height: 44px !important;
+    margin: 3px 12px;
+    padding-right: 14px;
+    border-radius: 8px;
+    color: var(--sidebar-text);
+    line-height: 44px !important;
+    font-size: 13px;
+    font-weight: 550;
+  }
+
+  .menu-title {
+    overflow: hidden !important;
+    color: inherit;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .svg-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 12px !important;
+    color: #79859b;
+  }
+
+  .el-sub-menu__icon-arrow {
+    right: 14px;
+    color: var(--roadbook-text-secondary);
+    font-size: 11px;
+  }
+
+  .el-menu-item.is-active {
+    color: var(--roadbook-primary) !important;
+    font-weight: 650;
+  }
+
+  .el-menu-item.is-active .svg-icon,
+  .el-sub-menu.is-active > .el-sub-menu__title .svg-icon {
+    color: var(--roadbook-primary);
+  }
+
+  .el-menu-item.is-active::before {
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--roadbook-primary) 11%, transparent) !important;
+  }
+
+  .el-menu-item:not(.is-active):hover,
+  .submenu-title-noDropdown:hover,
+  .el-sub-menu__title:hover {
+    background: var(--menu-hover) !important;
+    color: var(--roadbook-text-primary) !important;
+  }
+
+  .nest-menu .el-sub-menu > .el-sub-menu__title,
+  .el-sub-menu .el-menu-item {
+    min-width: 0 !important;
+    height: 38px !important;
+    margin-top: 1px;
+    margin-bottom: 1px;
+    padding-left: 48px !important;
+    background: transparent !important;
+    color: var(--roadbook-text-secondary);
+    line-height: 38px !important;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .el-menu--inline {
+    padding: 2px 0 7px;
+    background: transparent !important;
+  }
+
+  .nest-menu .svg-icon,
+  .el-sub-menu .el-menu-item .svg-icon {
+    display: none;
+  }
+
+  .el-sub-menu.is-active > .el-sub-menu__title {
+    color: var(--roadbook-text-primary) !important;
+  }
+
+  .el-sub-menu.is-active > .el-sub-menu__title .svg-icon {
+    color: #79859b;
+  }
+
+  .el-sub-menu .el-menu-item.is-active {
+    color: var(--roadbook-primary) !important;
+  }
+
+  &.theme-light .el-menu-item.is-active::before,
+  &.theme-dark .el-menu-item.is-active::before {
+    inset: 0;
+  }
+}
+
+#app .hideSidebar .sidebar-container {
+  .el-menu-item,
+  .el-sub-menu__title {
+    width: 42px;
+    margin-right: 6px;
+    margin-left: 6px;
+    padding: 0 !important;
+    justify-content: center;
+  }
+
+  .svg-icon {
+    margin: 0 !important;
+  }
+}
+
+.el-menu--vertical > .el-menu--popup {
+  padding: 6px;
+  border: 1px solid var(--roadbook-border);
+  border-radius: 8px;
+  background: var(--roadbook-panel-bg);
+  box-shadow: var(--roadbook-shadow);
+
+  .el-menu-item {
+    min-width: 176px;
+    height: 38px;
+    margin: 2px 0;
+    padding: 0 14px !important;
+    border-radius: 6px;
+    color: var(--roadbook-text-regular);
+    line-height: 38px;
+
+    &:hover {
+      background: var(--menu-hover) !important;
+      color: var(--roadbook-text-primary);
+    }
+
+    &.is-active {
+      color: var(--roadbook-primary);
+      background: color-mix(in srgb, var(--roadbook-primary) 11%, transparent) !important;
+    }
+  }
+
+  .nest-menu .svg-icon,
+  .el-menu-item .svg-icon {
+    display: none;
   }
 }

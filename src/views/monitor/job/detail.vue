@@ -1,5 +1,5 @@
 <template>
-  <el-dialog :title="type === 'log' ? '调度日志详细' : '任务详细'" v-model="dialogVisible" width="780px" append-to-body>
+  <el-drawer v-model="dialogVisible" :title="type === 'log' ? '调度日志详细' : '任务详细'" direction="rtl" size="min(780px, 94vw)" append-to-body class="app-drawer">
     <div class="detail-wrap">
       <template v-if="type === 'log'">
         <!-- 基本信息 -->
@@ -181,7 +181,7 @@
         <el-button @click="dialogVisible = false">关 闭</el-button>
       </div>
     </template>
-  </el-dialog>
+  </el-drawer>
 </template>
 
 <script setup lang="ts" name="JobDetail">
