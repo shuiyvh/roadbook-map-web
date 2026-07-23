@@ -48,6 +48,13 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: '/screen',
+    component: () => import('@/views/screen/index.vue'),
+    name: 'RoadbookScreen',
+    hidden: true,
+    meta: { title: '路书大屏', noCache: true }
+  },
+  {
     path: '/401',
     component: () => import('@/views/error/401.vue'),
     hidden: true
