@@ -15,6 +15,7 @@ export interface TripRecommend extends BaseEntity {
   id?: number
   routebookId?: number
   pointId?: number
+  prefCode?: string
   title?: string
   sourceUrl?: string
   sourceDomain?: string

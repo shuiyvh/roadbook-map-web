@@ -20,7 +20,7 @@ export function getRoutebook(id: number): Promise<AjaxResult<TripRoutebook>> {
   return request({ url: `/trip/screen/routebooks/${id}`, method: 'get' })
 }
 
-export function addRoutebook(data: TripRoutebook): Promise<AjaxResult> {
+export function addRoutebook(data: TripRoutebook): Promise<AjaxResult<number | TripRoutebook>> {
   return request({ url: '/trip/screen/routebooks', method: 'post', data })
 }
 
@@ -32,7 +32,7 @@ export function deleteRoutebook(id: number): Promise<AjaxResult> {
   return request({ url: `/trip/screen/routebooks/${id}`, method: 'delete' })
 }
 
-export function copyRoutebook(id: number): Promise<AjaxResult> {
+export function copyRoutebook(id: number): Promise<AjaxResult<number | TripRoutebook>> {
   return request({ url: `/trip/screen/routebooks/${id}/copy`, method: 'post' })
 }
 

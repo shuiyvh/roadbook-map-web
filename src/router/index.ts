@@ -62,7 +62,8 @@ export const constantRoutes = [
   {
     path: '',
     component: Layout,
-    redirect: '/index',
+    // 登录后的默认入口为独立路书大屏，后台首页仍通过 /index 访问。
+    redirect: '/screen',
     children: [
       {
         path: '/index',

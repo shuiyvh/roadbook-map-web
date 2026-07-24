@@ -40,7 +40,11 @@ const usePermissionStore = defineStore(
             const rdata = JSON.parse(JSON.stringify(res.data))
             const defaultData = JSON.parse(JSON.stringify(res.data))
             const sidebarRoutes = filterAsyncRouter(sdata)
-            const rewriteRoutes = filterAsyncRouter(rdata, false, true)
+            /*
+             * 大屏由前端常量路由 /screen 独立承载。后端菜单只负责在后台侧边栏展示入口，
+             * 不能再次注册为 Layout 子路由，否则从菜单进入时会套用后台导航和标签栏。
+             */
+            const rewriteRoutes = filterAsyncRouter(removeStandaloneScreenRoute(rdata), false, true)
             const defaultRoutes = filterAsyncRouter(defaultData)
             const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
             asyncRoutes.forEach(route => { router.addRoute(route) })
@@ -54,6 +58,28 @@ const usePermissionStore = defineStore(
       }
     }
   })
+
+/**
+ * 从待注册的动态路由中移除大屏菜单及其空壳父路由。
+ * 侧边栏使用独立的数据副本，因此菜单仍会正常展示并跳转到顶级 /screen。
+ */
+function removeStandaloneScreenRoute(routes: any[]): any[] {
+  return routes.reduce((filteredRoutes: any[], route: any) => {
+    if (route.component === 'screen/index') {
+      return filteredRoutes
+    }
+
+    if (Array.isArray(route.children) && route.children.length > 0) {
+      route.children = removeStandaloneScreenRoute(route.children)
+      if (route.children.length === 0) {
+        return filteredRoutes
+      }
+    }
+
+    filteredRoutes.push(route)
+    return filteredRoutes
+  }, [])
+}
 
 // 遍历后台传来的路由字符串，转换为组件对象
 function filterAsyncRouter(asyncRouterMap: any[], lastRouter = false, type = false) {
