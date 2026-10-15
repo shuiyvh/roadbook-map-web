@@ -62,3 +62,18 @@ export interface TripPreferenceSourceRel extends BaseEntity {
   weight?: number
   enabled?: number
 }
+
+export interface TripThirdConfigQuery extends PageDomain {
+  configType?: string
+  enabled?: number
+}
+
+export interface TripThirdConfig extends BaseEntity {
+  id?: number
+  configType?: string
+  configKey?: string
+  configValue?: string
+  encrypted?: number
+  enabled?: number
+  remark?: string
+}

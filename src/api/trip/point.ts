@@ -26,3 +26,11 @@ export function sortRoutebookPoints(routebookId: number, points: TripRoutebookPo
 export function deleteRoutebookPoint(routebookId: number, pointId: number): Promise<AjaxResult> {
   return request({ url: `/trip/screen/routebooks/${routebookId}/points/${pointId}`, method: 'delete' })
 }
+
+/** 保存路书每日行程拆分：为点位设置所属天数（dayNo 从 1 开始）。 */
+export function assignRoutebookDayPlan(
+  routebookId: number,
+  points: { pointId: number; dayNo: number }[]
+): Promise<AjaxResult> {
+  return request({ url: `/trip/screen/routebooks/${routebookId}/points/day-plan`, method: 'put', data: { points } })
+}

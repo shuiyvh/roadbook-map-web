@@ -25,21 +25,139 @@ import RoutebookSelect from '@/components/RoutebookSelect/index.vue'
 import { cancelJourney, checkinJourneyPoint, finishJourney, getJourney, matchJourneyLocation, setCurrentJourneyPoint, skipJourneyPoint, startJourney, undoJourneyCheckin } from '@/api/trip/journey'
 import type { TripJourneyCheckinRequest, TripJourneyDetail, TripJourneyLocationRequest, TripJourneyStartRequest } from '@/types/api/trip/journeyBusiness'
 type TripJourneyStartForm = Omit<TripJourneyStartRequest, 'routebookId'> & { routebookId?: number }
-const { trip_journey_status, trip_journey_point_status, trip_client_type, trip_checkin_type } = useDict('trip_journey_status', 'trip_journey_point_status', 'trip_client_type', 'trip_checkin_type')
-const journeyId = ref<number>(); const detail = ref<TripJourneyDetail>(); const loading = ref(false); const loadError = ref(false); const submitting = ref(false)
-const startOpen = ref(false); const locationOpen = ref(false); const checkinOpen = ref(false); const startFormRef = ref<any>(); const checkinFormRef = ref<any>(); const startForm = ref<TripJourneyStartForm>({ clientType: 'WEB' }); const locationForm = ref<TripJourneyLocationRequest>({ journeyId: 0, lng: 0, lat: 0, clientType: 'WEB' }); const checkinForm = ref<TripJourneyCheckinRequest>({ journeyId: 0, checkinType: 'MANUAL' })
-const startRules: Record<string, any[]> = { routebookId: [{ required: true, message: '请选择路书', trigger: 'change' }] }; const checkinRules: Record<string, any[]> = { pointId: [{ required: true, message: '请填写点位 ID', trigger: 'change' }] }
+const { trip_journey_status, trip_journey_point_status, trip_client_type, trip_checkin_type } = useDict(
+  'trip_journey_status',
+  'trip_journey_point_status',
+  'trip_client_type',
+  'trip_checkin_type'
+)
+
+const journeyId = ref<number>()
+const detail = ref<TripJourneyDetail>()
+const loading = ref(false)
+const loadError = ref(false)
+const submitting = ref(false)
+
+const startOpen = ref(false)
+const locationOpen = ref(false)
+const checkinOpen = ref(false)
+const startFormRef = ref<any>()
+const checkinFormRef = ref<any>()
+const startForm = ref<TripJourneyStartForm>({ clientType: 'WEB' })
+const locationForm = ref<TripJourneyLocationRequest>({ journeyId: 0, lng: 0, lat: 0, clientType: 'WEB' })
+const checkinForm = ref<TripJourneyCheckinRequest>({ journeyId: 0, checkinType: 'MANUAL' })
+
+const startRules: Record<string, any[]> = {
+  routebookId: [{ required: true, message: '请选择路书', trigger: 'change' }]
+}
+const checkinRules: Record<string, any[]> = {
+  pointId: [{ required: true, message: '请填写点位 ID', trigger: 'change' }]
+}
 const journeyPoints = computed<Record<string, any>[]>(() => Array.isArray(detail.value?.points) ? detail.value!.points as Record<string, any>[] : [])
-async function loadJourney(): Promise<void> { if (!journeyId.value) { ElMessage.warning('请输入出行实例 ID'); return } loading.value = true; loadError.value = false; try { const response = await getJourney(journeyId.value); detail.value = response.data } catch (error) { loadError.value = true; console.warn('出行实例加载失败，请核对实例 ID。', error) } finally { loading.value = false } }
-function openStart(): void { startForm.value = { clientType: 'WEB' }; startOpen.value = true; nextTick(() => startFormRef.value?.clearValidate()) }
-async function submitStart(): Promise<void> { await startFormRef.value?.validate(); submitting.value = true; try { const response: any = await startJourney({ ...startForm.value, routebookId: Number(startForm.value.routebookId) }); const data = response.data || {}; journeyId.value = Number(data.id || data.journeyId); ElMessage.success('出行已开始'); startOpen.value = false; if (journeyId.value) await loadJourney() } catch (error) { console.warn('开始出行失败，请检查路书状态和起点参数。', error) } finally { submitting.value = false } }
-async function submitLocation(): Promise<void> { submitting.value = true; try { await matchJourneyLocation({ ...locationForm.value, journeyId: Number(journeyId.value) }); ElMessage.success('定位匹配完成'); locationOpen.value = false; await loadJourney() } catch (error) { console.warn('定位匹配失败，请检查定位参数。', error) } finally { submitting.value = false } }
-function openCheckin(row?: Record<string, any>): void { checkinForm.value = { journeyId: Number(journeyId.value), pointId: row?.pointId || detail.value?.currentPointId, checkinType: 'MANUAL' }; checkinOpen.value = true; nextTick(() => checkinFormRef.value?.clearValidate()) }
-async function submitCheckin(): Promise<void> { await checkinFormRef.value?.validate(); submitting.value = true; try { await checkinJourneyPoint(checkinForm.value); ElMessage.success('打卡成功'); checkinOpen.value = false; await loadJourney() } catch (error) { console.warn('点位打卡失败，请检查点位和定位信息。', error) } finally { submitting.value = false } }
-async function pointAction(command: string, row: Record<string, any>): Promise<void> { const data = { journeyId: Number(journeyId.value), pointId: Number(row.pointId) }; if (command === 'skip') await skipJourneyPoint(data); if (command === 'undo') await undoJourneyCheckin(data); if (command === 'current') await setCurrentJourneyPoint(data); ElMessage.success('操作成功'); await loadJourney() }
-async function finish(): Promise<void> { await ElMessageBox.confirm('结束后本次出行将进入完成状态，确定吗？', '结束出行', { type: 'warning' }); await finishJourney({ journeyId: Number(journeyId.value) }); ElMessage.success('出行已结束'); await loadJourney() }
-async function cancel(): Promise<void> { const result = await ElMessageBox.prompt('请输入取消原因', '取消出行', { inputType: 'textarea' }); await cancelJourney({ journeyId: Number(journeyId.value), reason: result.value }); ElMessage.success('出行已取消'); await loadJourney() }
-function beforeClose(done: () => void): void { if (!submitting.value) done() }
+async function loadJourney(): Promise<void> {
+  if (!journeyId.value) {
+    ElMessage.warning('请输入出行实例 ID')
+    return
+  }
+  loading.value = true
+  loadError.value = false
+  try {
+    const response = await getJourney(journeyId.value)
+    detail.value = response.data
+  } catch (error) {
+    loadError.value = true
+    console.warn('出行实例加载失败，请核对实例 ID。', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+function openStart(): void {
+  startForm.value = { clientType: 'WEB' }
+  startOpen.value = true
+  nextTick(() => startFormRef.value?.clearValidate())
+}
+
+async function submitStart(): Promise<void> {
+  await startFormRef.value?.validate()
+  submitting.value = true
+  try {
+    const response: any = await startJourney({ ...startForm.value, routebookId: Number(startForm.value.routebookId) })
+    const data = response.data || {}
+    journeyId.value = Number(data.id || data.journeyId)
+    ElMessage.success('出行已开始')
+    startOpen.value = false
+    if (journeyId.value) await loadJourney()
+  } catch (error) {
+    console.warn('开始出行失败，请检查路书状态和起点参数。', error)
+  } finally {
+    submitting.value = false
+  }
+}
+async function submitLocation(): Promise<void> {
+  submitting.value = true
+  try {
+    await matchJourneyLocation({ ...locationForm.value, journeyId: Number(journeyId.value) })
+    ElMessage.success('定位匹配完成')
+    locationOpen.value = false
+    await loadJourney()
+  } catch (error) {
+    console.warn('定位匹配失败，请检查定位参数。', error)
+  } finally {
+    submitting.value = false
+  }
+}
+
+function openCheckin(row?: Record<string, any>): void {
+  checkinForm.value = {
+    journeyId: Number(journeyId.value),
+    pointId: row?.pointId || detail.value?.currentPointId,
+    checkinType: 'MANUAL'
+  }
+  checkinOpen.value = true
+  nextTick(() => checkinFormRef.value?.clearValidate())
+}
+
+async function submitCheckin(): Promise<void> {
+  await checkinFormRef.value?.validate()
+  submitting.value = true
+  try {
+    await checkinJourneyPoint(checkinForm.value)
+    ElMessage.success('打卡成功')
+    checkinOpen.value = false
+    await loadJourney()
+  } catch (error) {
+    console.warn('点位打卡失败，请检查点位和定位信息。', error)
+  } finally {
+    submitting.value = false
+  }
+}
+async function pointAction(command: string, row: Record<string, any>): Promise<void> {
+  const data = { journeyId: Number(journeyId.value), pointId: Number(row.pointId) }
+  if (command === 'skip') await skipJourneyPoint(data)
+  if (command === 'undo') await undoJourneyCheckin(data)
+  if (command === 'current') await setCurrentJourneyPoint(data)
+  ElMessage.success('操作成功')
+  await loadJourney()
+}
+
+async function finish(): Promise<void> {
+  await ElMessageBox.confirm('结束后本次出行将进入完成状态，确定吗？', '结束出行', { type: 'warning' })
+  await finishJourney({ journeyId: Number(journeyId.value) })
+  ElMessage.success('出行已结束')
+  await loadJourney()
+}
+
+async function cancel(): Promise<void> {
+  const result = await ElMessageBox.prompt('请输入取消原因', '取消出行', { inputType: 'textarea' })
+  await cancelJourney({ journeyId: Number(journeyId.value), reason: result.value })
+  ElMessage.success('出行已取消')
+  await loadJourney()
+}
+
+function beforeClose(done: () => void): void {
+  if (!submitting.value) done()
+}
 </script>
 
 <style scoped lang="scss">

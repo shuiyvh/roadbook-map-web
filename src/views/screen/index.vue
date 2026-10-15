@@ -42,7 +42,10 @@
           <div class="route-heading-main">
             <div class="route-title-row">
               <h1>{{ routebook?.title || '暂无路书' }}</h1>
-              <button type="button" :disabled="!routebookId" aria-label="编辑路书" @click="openEditRoutebook"><el-icon><EditPen /></el-icon></button>
+              <button type="button" class="departure-chip" :disabled="!routebookId" aria-label="设置出发时间" @click="openDepartureDialog">
+                <el-icon><Stopwatch /></el-icon>
+                <span>{{ departureText }}</span>
+              </button>
             </div>
             <el-dropdown :disabled="!routebookId" trigger="click" @command="(command: string) => routebook && handleRoutebookCommand(command, routebook)">
               <button type="button" aria-label="更多路书操作"><el-icon><MoreFilled /></el-icon></button>
@@ -67,12 +70,6 @@
           <div><strong>{{ dayCount ? `${dayCount}天` : '--' }}</strong><span>行程天数</span></div>
           <div><strong>{{ routePoints.length }}个</strong><span>途经地点</span></div>
           <div><strong>{{ distanceText }}</strong><span>总里程</span></div>
-        </div>
-
-        <div class="route-time">
-          <el-icon><Stopwatch /></el-icon>
-          <span>出发时间</span>
-          <strong>待规划</strong>
         </div>
 
         <div class="route-tabs">
@@ -127,6 +124,23 @@
                         @dragend.stop="handlePointDragEnd"
                       ><Rank /></el-icon>
                     </el-tooltip>
+                    <el-tooltip :content="index === 0 ? '已是首个节点' : '向上移动'" placement="top">
+                      <el-icon
+                        class="node-move"
+                        :class="{ 'is-disabled': index === 0 }"
+                        @click.stop="moveRoutebookPoint(index, index - 1)"
+                      ><ArrowUp /></el-icon>
+                    </el-tooltip>
+                    <el-tooltip :content="index === routePoints.length - 1 ? '已是末个节点' : '向下移动'" placement="top">
+                      <el-icon
+                        class="node-move"
+                        :class="{ 'is-disabled': index === routePoints.length - 1 }"
+                        @click.stop="moveRoutebookPoint(index, index + 1)"
+                      ><ArrowDown /></el-icon>
+                    </el-tooltip>
+                    <el-tooltip content="删除点位" placement="top">
+                      <el-icon class="node-delete" @click.stop="removeRoutebookPoint(point)"><Delete /></el-icon>
+                    </el-tooltip>
                     <el-dropdown trigger="click" @click.stop @command="(command: string) => handlePointCommand(command, point, index)">
                       <el-icon class="point-more"><MoreFilled /></el-icon>
                       <template #dropdown>
@@ -167,16 +181,54 @@
       </aside>
 
       <aside class="map-toolbar glass-panel" aria-label="地图工具">
-        <button
-          v-for="(tool, index) in mapTools"
-          :key="tool.label"
-          type="button"
-          :class="{ active: activeTool === index }"
-          @click="handleMapTool(index)"
-        >
-          <el-icon><component :is="tool.icon" /></el-icon>
-          <span>{{ tool.label }}</span>
-        </button>
+        <div class="map-toolbar-tools">
+          <button
+            v-for="(tool, index) in mapTools"
+            :key="tool.label"
+            type="button"
+            :class="{ active: activeTool === index }"
+            @click="handleMapTool(index)"
+          >
+            <el-icon><component :is="tool.icon" /></el-icon>
+            <span>{{ tool.label }}</span>
+          </button>
+        </div>
+        <div class="map-toolbar-toggles">
+          <button type="button" :class="{ active: mapLayer === 'sat' }" @click="toggleMapLayer">
+            <el-icon><MapLocation /></el-icon>
+            <span>卫星图</span>
+          </button>
+          <button type="button" :class="{ active: weatherVisible }" @click="toggleWeather">
+            <el-icon><Sunny /></el-icon>
+            <span>天气</span>
+          </button>
+          <button type="button" :class="{ active: mapPickEnabled }" @click="toggleMapPick">
+            <el-icon><Location /></el-icon>
+            <span>选点</span>
+          </button>
+          <button type="button" :class="{ active: mapStyleOpen }" @click.stop="toggleMapStyle">
+            <el-icon><Brush /></el-icon>
+            <span>风格</span>
+          </button>
+          <div v-if="mapStyleOpen" class="map-style-panel glass-panel" aria-label="地图风格">
+            <div class="map-style-panel__head">
+              <strong>地图风格</strong>
+              <button type="button" aria-label="关闭地图风格面板" @click="mapStyleOpen = false">×</button>
+            </div>
+            <div class="map-style-panel__grid">
+              <button
+                v-for="option in MAP_STYLE_OPTIONS"
+                :key="option.key"
+                type="button"
+                :class="{ selected: mapStyleKey === option.key }"
+                @click.stop="applyMapStyle(option.key)"
+              >
+                <span class="map-style-swatch" :style="{ background: option.color }" />
+                <span class="map-style-name">{{ option.name }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </aside>
 
       <section class="map-stage" aria-label="川西小环线路线地图">
@@ -233,12 +285,44 @@
             <span>{{ poiSearchMessage }}</span>
           </div>
         </section>
-        <article v-if="poiSearchMode && selectedPoi" class="poi-result-card glass-panel">
+        <article v-if="(poiSearchMode || mapPickPending) && selectedPoi" class="poi-result-card glass-panel">
           <header>
-            <div><span>已选择地点</span><h3>{{ selectedPoi.name || '未命名地点' }}</h3></div>
-            <button type="button" aria-label="关闭地点卡片" @click="selectedPoi = undefined">×</button>
+            <div><span>{{ mapPickPending ? '地图选点' : '已选择地点' }}</span><h3>{{ selectedPoi.name || '未命名地点' }}</h3></div>
+            <button type="button" aria-label="关闭地点卡片" @click="dismissPendingPoi">×</button>
           </header>
           <p>{{ selectedPoi.address || selectedPoi.type || '暂无地址信息' }}</p>
+          <!-- 周边地点：逆地理自带候选 + 关键词搜索兜底，点选直接切换为所选地点 -->
+          <div v-if="mapPickPending" class="poi-pick-wrap">
+            <div class="poi-pick-search">
+              <el-input
+                v-model="mapPickKeyword"
+                size="small"
+                clearable
+                placeholder="搜附近地名（如：黄果树）"
+                aria-label="搜索附近地点"
+                @keyup.enter="searchNearbyPick"
+                @clear="resetNearbyPick"
+              />
+              <button type="button" :disabled="mapPickSearching" @click="searchNearbyPick">
+                {{ mapPickSearching ? '搜…' : '搜索' }}
+              </button>
+            </div>
+            <div v-if="mapPickPois.length" class="poi-pick-list">
+              <span class="poi-pick-title">周边地点</span>
+              <button
+                v-for="poi in mapPickPois"
+                :key="poi.id"
+                type="button"
+                class="poi-pick-item"
+                :class="{ active: selectedPoi && poi.id === selectedPoi.id }"
+                @click="pickNearbyPoi(poi)"
+              >
+                <span class="poi-pick-name">{{ poi.name }}</span>
+                <small>{{ poi.type || '地点' }}</small>
+              </button>
+            </div>
+            <p v-else-if="mapPickNoResult" class="poi-pick-empty">附近没搜到地点，换个关键词试试</p>
+          </div>
           <div class="poi-result-meta">
             <span>{{ selectedPoi.type || '地点类型未知' }}</span>
             <span v-if="selectedPoi.distance">{{ selectedPoi.distance }}m</span>
@@ -247,6 +331,11 @@
             <el-select v-model="pointType" size="small" aria-label="点位类型">
               <el-option v-for="item in pointTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
+            <label class="poi-add-day" aria-label="所属天数">
+              <span>第</span>
+              <el-input-number v-model="pendingAddDayNo" :min="1" :max="99" size="small" controls-position="right" />
+              <span>天</span>
+            </label>
             <button type="button" :disabled="addingPointId !== undefined" @click="addSelectedPoi">
               {{ addingPointId !== undefined ? '添加中…' : '加入路线' }}
             </button>
@@ -258,6 +347,34 @@
           <span>{{ zoom }}</span>
           <button type="button" aria-label="缩小地图" @click="changeMapZoom(-1)"><el-icon><Minus /></el-icon></button>
         </div>
+        <div v-if="weatherVisible && weatherInfo" class="map-weather glass-panel" aria-label="当前天气">
+          <span class="map-weather-icon" aria-hidden="true">{{ weatherInfo.icon }}</span>
+          <div class="map-weather-meta">
+            <strong>{{ weatherInfo.city }} {{ weatherInfo.temperature }}°C</strong>
+            <small>{{ weatherInfo.weather }} · {{ weatherInfo.windDirection }}风 {{ weatherInfo.windPower }} 级</small>
+          </div>
+        </div>
+        <!-- 地图点位详情：点击路线点 marker 弹出，支持上移/下移/删除 -->
+        <div v-if="detailPointIndex >= 0 && points[detailPointIndex]" class="map-point-detail glass-panel" aria-label="点位详情">
+          <header>
+            <div>
+              <span>点位详情</span>
+              <h3>{{ points[detailPointIndex].pointName || '未命名地点' }}</h3>
+            </div>
+            <button type="button" aria-label="关闭点位详情" @click="closePointDetail">×</button>
+          </header>
+          <p>{{ points[detailPointIndex].address || '暂无详细地址' }}</p>
+          <div class="map-point-detail-tags">
+            <span>{{ points[detailPointIndex].pointType || '点位' }}</span>
+            <span v-if="points[detailPointIndex].source === 'AMAP'">高德</span>
+          </div>
+          <footer>
+            <button type="button" @click="editDetailPoint">编辑</button>
+            <button type="button" :disabled="detailPointIndex === 0" @click="moveDetailPoint(-1)">上移</button>
+            <button type="button" :disabled="detailPointIndex === points.length - 1" @click="moveDetailPoint(1)">下移</button>
+            <button type="button" class="danger" @click="removeDetailPoint">删除</button>
+          </footer>
+        </div>
         <button class="locate-button glass-panel" :class="{ locating: locationStatus === 'locating' }" type="button" aria-label="定位当前位置" @click="requestBrowserLocation">
           <el-icon><Position /></el-icon>
         </button>
@@ -266,7 +383,7 @@
       <aside class="recommend-panel glass-panel">
         <div class="recommend-heading">
           <h2><el-icon><MagicStick /></el-icon><span>AI 智能推荐</span></h2>
-          <button type="button" :disabled="recommendLoading" aria-label="刷新推荐" @click="loadRecommendations"><el-icon><Refresh /></el-icon></button>
+          <button type="button" :disabled="recommendLoading" aria-label="AI 搜索并刷新推荐" @click="searchAndRefreshRecommendations"><el-icon><Refresh /></el-icon></button>
         </div>
         <div class="recommend-tabs" role="tablist">
           <button
@@ -282,7 +399,7 @@
         </div>
 
         <div v-if="recommendLoading" class="recommend-empty">正在加载推荐内容…</div>
-        <div v-else-if="recommendations.length === 0" class="recommend-empty">当前分类暂无推荐内容</div>
+        <div v-else-if="recommendations.length === 0" class="recommend-empty">当前分类暂无推荐内容，点击右上角刷新按钮可发起 AI 搜索</div>
         <div v-else class="recommend-list">
           <article v-for="(item, index) in recommendations" :key="item.id || index">
             <div class="recommend-image" :style="{ backgroundPosition: `${(index % 3) * 50}% center` }"><span>{{ item.prefCode || '推荐' }}</span></div>
@@ -297,13 +414,6 @@
         </div>
         <button class="change-batch" type="button" :disabled="recommendLoading || recommendationTotal <= recommendations.length" @click="changeRecommendationPage"><el-icon><Refresh /></el-icon>换一批</button>
       </aside>
-
-      <section class="trip-metrics glass-panel" aria-label="行程数据">
-        <article v-for="metric in metrics" :key="metric.label">
-          <span class="metric-icon" :class="`metric-${metric.tone}`"><el-icon><component :is="metric.icon" /></el-icon></span>
-          <div><small>{{ metric.label }}</small><strong>{{ metric.value }} <em>{{ metric.unit }}</em></strong><p>{{ metric.note }}</p></div>
-        </article>
-      </section>
     </section>
 
     <el-drawer v-model="routebookDrawerOpen" title="我的路书" size="520px" append-to-body @open="loadRoutebookList">
@@ -362,7 +472,6 @@
             <el-option v-for="item in trip_route_mode" :key="item.value" :label="item.label" :value="item.value" />
           </el-select></el-form-item>
         </div>
-        <el-form-item label="路线策略"><el-input v-model="routebookForm.routePolicy" maxlength="64" placeholder="选填，使用后端默认策略时留空" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button :disabled="routebookSubmitting" @click="routebookDialogOpen = false">取消</el-button>
@@ -391,6 +500,25 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="departureDialogOpen" title="设置出发时间" width="420px" append-to-body :close-on-click-modal="false">
+      <el-form label-width="94px">
+        <el-form-item label="出发时间">
+          <el-date-picker
+            v-model="departureFormValue"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="选择出发日期与时间"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <p class="departure-tip">未设置时大屏显示「待规划」；点右上角的小时钟随时可修改。</p>
+      </el-form>
+      <template #footer>
+        <el-button @click="departureDialogOpen = false">取消</el-button>
+        <el-button type="primary" :loading="departureSaving" @click="saveDeparture">保存</el-button>
+      </template>
+    </el-dialog>
+
   </main>
 </template>
 
@@ -401,7 +529,7 @@ import { searchPoi } from '@/api/trip/map'
 import { addRoutebookPoint, deleteRoutebookPoint, listRoutebookPoints, sortRoutebookPoints, updateRoutebookPoint } from '@/api/trip/point'
 import {
   addRoutebook, archiveRoutebook, copyRoutebook, deleteRoutebook, getRoutebook,
-  listRoutebooks, publishRoutebook, updateRoutebook
+  listRoutebooks, publishRoutebook, recordRoutebookView, updateRoutebook
 } from '@/api/trip/routebook'
 import { createShareLink } from '@/api/trip/share'
 import { listRoutebookSegments, recalculateRoutebookSegments } from '@/api/trip/segment'
@@ -413,9 +541,9 @@ import type { PoiItem } from '@/types/api/trip/map'
 import type { TripRoutebookPoint, TripRoutebookSegment } from '@/types/api/trip/point'
 import type { TripRoutebook, TripRoutebookQuery } from '@/types/api/trip/routebook'
 import {
-  Aim, Camera, Collection, EditPen, Food, FolderChecked, FullScreen, Guide, Histogram,
-  House, Loading, Location, MagicStick, Menu, Minus, MoreFilled, OfficeBuilding, Picture,
-  Plus, Position, Promotion, Rank, Refresh, Search, Setting, Share, Star, Stopwatch, Sunny, TrendCharts,
+  ArrowDown, ArrowUp, Brush, Camera, Collection, Delete, EditPen, Food, FolderChecked, FullScreen, Guide,
+  House, Loading, Location, MagicStick, MapLocation, Minus, MoreFilled, OfficeBuilding, Picture,
+  Plus, Position, Promotion, Rank, Refresh, Search, Setting, Share, Star, Stopwatch, Sunny,
   WarningFilled
 } from '@element-plus/icons-vue'
 
@@ -467,8 +595,44 @@ const poiSearchMode = ref(false)
 const poiSearchStatus = ref<'idle' | 'searching' | 'results' | 'empty' | 'error'>('idle')
 const poiSearchMessage = ref('输入地点关键词并按回车，搜索结果会显示在地图上')
 const pointType = ref('WAYPOINT')
+/** 高德内置地图主题预置选集：mapStyle 用 amap://styles/<key> 切换，本地记忆偏好 */
+const ROADBOOK_MAP_STYLE_KEY = 'roadbook.mapStyle'
+const MAP_STYLE_OPTIONS: { key: string; name: string; color: string }[] = [
+  { key: 'normal', name: '标准', color: 'linear-gradient(135deg,#e9edf3,#c8d2e0)' },
+  { key: 'light', name: '浅色', color: 'linear-gradient(135deg,#f7fafc,#dde7f0)' },
+  { key: 'whitesmoke', name: '白雾', color: 'linear-gradient(135deg,#f2f7f7,#cfe0e0)' },
+  { key: 'fresh', name: '清新', color: 'linear-gradient(135deg,#eaf6ee,#bfe0c8)' },
+  { key: 'macaron', name: '马卡龙', color: 'linear-gradient(135deg,#fdf0ec,#f4d6c6)' },
+  { key: 'graffiti', name: '涂鸦', color: 'linear-gradient(135deg,#f6f2ff,#d9c9f2)' },
+  { key: 'grey', name: '灰色', color: 'linear-gradient(135deg,#eceff2,#c2cad2)' },
+  { key: 'blue', name: '蓝色', color: 'linear-gradient(135deg,#ddeaef,#9fc4db)' },
+  { key: 'dark', name: '深色', color: 'linear-gradient(135deg,#2b3340,#141a22)' },
+  { key: 'darkblue', name: '暗蓝', color: 'linear-gradient(135deg,#1e2a3a,#0d1520)' },
+  { key: 'midnight', name: '午夜', color: 'linear-gradient(135deg,#14151c,#050507)' },
+  { key: 'satellite', name: '卫星·写实', color: 'linear-gradient(135deg,#86a76b,#556a4a)' }
+]
+
+/** 读取本地记忆的地图风格，未设置过时默认使用高德标准底色（与原版一致） */
+function readMapStyle(): string {
+  try {
+    const saved = localStorage.getItem(ROADBOOK_MAP_STYLE_KEY)
+    if (saved && saved !== 'satellite' && MAP_STYLE_OPTIONS.some((option) => option.key === saved)) return saved
+  } catch (error) {
+    console.warn('大屏读取地图风格偏好失败，使用默认风格。', error)
+  }
+  return 'normal'
+}
+
+const mapStyleKey = ref<string>(readMapStyle())
+const mapStyleOpen = ref(false)
 const pointCandidates = ref<PoiItem[]>([])
 const selectedPoi = ref<PoiItem>()
+/** 添加点位时的所属天数（搜索/地图选点共用，默认落在当前最大天数或第 1 天） */
+const pendingAddDayNo = ref(1)
+/** 出发时间弹窗状态：departureFormValue 保存「YYYY-MM-DD HH:mm:ss」文本 */
+const departureDialogOpen = ref(false)
+const departureFormValue = ref('')
+const departureSaving = ref(false)
 const addingPointId = ref<string>()
 const routebookId = ref<number>()
 const routebook = ref<TripRoutebook>()
@@ -484,13 +648,32 @@ let routeOverlays: any[] = []
 let pointMarkers: any[] = []
 let poiSearchOverlays: any[] = []
 let selectedPoiMarkerElement: HTMLElement | undefined
+let mapPickPlaceSearch: any
+/** 当前选点坐标，作为卡片内「周边搜索」的中心 */
+let mapPickSearchCenter: number[] = []
+const mapLayer = ref<'std' | 'sat'>('std')
+const weatherVisible = ref(false)
+const weatherInfo = ref<{ city: string; weather: string; temperature: string; windDirection: string; windPower: string; icon: string }>()
+const mapPickEnabled = ref(false)
+const mapPickPending = ref(false)
+/** 地图选点的周边地点候选（逆地理解析结果自带周边 POI），供用户从中选取有名字的地点 */
+const mapPickPois = ref<PoiItem[]>([])
+/** 选点卡片内的周边关键词搜索状态 */
+const mapPickKeyword = ref('')
+const mapPickSearching = ref(false)
+const mapPickNoResult = ref(false)
+/** 地图点位详情浮层当前展示的路线点下标，-1 表示关闭 */
+const detailPointIndex = ref(-1)
+let satLayer: any
+let roadLayer: any
+let mapWeatherPlugin: any
+let mapGeocoder: any
+let weatherRefreshTimer: number | undefined
 
 const mapTools = [
   { label: '编辑', icon: EditPen },
   { label: '地点搜索', icon: Search },
-  { label: '路线规划', icon: Guide },
-  { label: '图层', icon: Menu },
-  { label: '设置', icon: Setting }
+  { label: '路线规划', icon: Guide }
 ]
 
 const recommendTabs = [
@@ -532,14 +715,14 @@ const totalDistance = computed(() => {
   return segments.value.reduce((total: number, segment: TripRoutebookSegment) => total + Number(segment.distanceM || 0), 0)
 })
 
-const totalDuration = computed(() => {
-  if (routebook.value?.totalDurationS !== undefined && routebook.value.totalDurationS !== null) {
-    return Number(routebook.value.totalDurationS)
-  }
-  return segments.value.reduce((total: number, segment: TripRoutebookSegment) => total + Number(segment.durationS || 0), 0)
-})
-
 const distanceText = computed(() => totalDistance.value > 0 ? formatDistance(totalDistance.value) : '--')
+/** 出发时间展示文本：有值显示「MM-DD HH:mm」短格式，未设置显示「待规划」 */
+const departureText = computed(() => {
+  const raw = routebook.value?.startDate
+  if (!raw) return '待规划'
+  const text = String(raw)
+  return text.length >= 16 ? text.slice(5, 16) : text
+})
 const dayCount = computed(() => Math.max(points.value.length > 0 ? 1 : 0, ...points.value.map((point: TripRoutebookPoint) => Number(point.dayNo || 0))))
 const overviewTitle = computed(() => {
   const start = routebook.value?.startName || points.value[0]?.pointName
@@ -562,15 +745,6 @@ const routePoints = computed<ScreenRoutePoint[]>(() => {
   })
 })
 
-const metrics = computed(() => [
-  { label: '总里程', value: totalDistance.value > 0 ? formatNumber(totalDistance.value / 1000, 1) : '--', unit: totalDistance.value > 0 ? 'km' : '', note: '预计行驶里程', tone: 'slate', icon: Guide },
-  { label: '预计用时', value: totalDuration.value > 0 ? formatDuration(totalDuration.value) : '--', unit: '', note: '不含休息时间', tone: 'orange', icon: Stopwatch },
-  { label: '累计爬升', value: '--', unit: '', note: '接口暂未提供', tone: 'green', icon: TrendCharts },
-  { label: '预计油耗', value: '--', unit: '', note: '接口暂未提供', tone: 'orange', icon: Histogram },
-  { label: '最佳季节', value: '--', unit: '', note: '接口暂未提供', tone: 'purple', icon: Sunny },
-  { label: '平均气温', value: '--', unit: '', note: '接口暂未提供', tone: 'blue', icon: Aim }
-])
-
 /**
  * 大屏允许通过 routebookId 精确进入；普通登录入口没有携带 ID 时，
  * 使用当前账号最近更新的一条路书，保证默认入口也能形成可见的数据闭环。
@@ -589,6 +763,8 @@ async function loadScreenData(): Promise<void> {
       return
     }
     routebookId.value = targetId
+    // 浏览统计独立上报，失败不影响大屏主流程
+    recordRoutebookView(targetId).catch(() => undefined)
     if (Number(route.query.routebookId) !== targetId) {
       router.replace({ query: { ...route.query, routebookId: String(targetId) } })
     }
@@ -642,6 +818,38 @@ async function loadRecommendations(): Promise<void> {
     recommendations.value = []
     recommendationTotal.value = 0
     console.warn('大屏推荐内容加载失败，请检查推荐列表接口。', error)
+  } finally {
+    recommendLoading.value = false
+  }
+}
+
+/**
+ * AI 搜索并刷新当前分类推荐。
+ * 推荐面板列表来自推荐结果缓存表，缓存未生成时面板无数据；
+ * 点击刷新按钮主动触发 Tavily 搜索落库后再拉取列表，避免面板长期空白。
+ * 搜索词优先取用户输入的关键词，其次路书标题，最后回退当前分类名称。
+ */
+async function searchAndRefreshRecommendations(): Promise<void> {
+  if (!routebookId.value) {
+    ElMessage.warning('请先创建或选择路书')
+    return
+  }
+  const queryText = keyword.value.trim() || routebook.value?.title || recommendTabs[recommendTab.value].label
+  recommendLoading.value = true
+  try {
+    await searchRecommendations({
+      routebookId: routebookId.value,
+      prefCode: recommendTabs[recommendTab.value].code,
+      queryText,
+      searchDepth: 'basic',
+      maxResults: 6
+    })
+    recommendationPage.value = 1
+    await loadRecommendations()
+    ElMessage.success('AI 搜索完成，推荐结果已更新')
+  } catch (error) {
+    console.warn('大屏 AI 搜索失败，请检查推荐搜索接口。', error)
+    ElMessage.error('AI 搜索失败，请稍后重试')
   } finally {
     recommendLoading.value = false
   }
@@ -867,7 +1075,7 @@ async function optimizeRoute(): Promise<void> {
   if (!routebookId.value) return
   optimizing.value = true
   try {
-    await recalculateRoutebookSegments(routebookId.value)
+    const recalcResult = await recalculateRoutebookSegments(routebookId.value)
     const [detailResult, segmentResult] = await Promise.all([
       getRoutebook(routebookId.value),
       listRoutebookSegments(routebookId.value)
@@ -875,7 +1083,22 @@ async function optimizeRoute(): Promise<void> {
     routebook.value = detailResult.data || routebook.value
     segments.value = normalizeList<TripRoutebookSegment>(segmentResult).sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
     renderRoute()
-    ElMessage.success('路线已重新计算')
+    // 分段重算失败提示：失败分段不落库，把起终点与原因展示给用户（如骑行单段超过约 300km）
+    const recalcData = recalcResult?.data
+    const successCount = Number(recalcData?.successCount ?? 0)
+    const failedCount = Number(recalcData?.failedCount ?? 0)
+    if (failedCount > 0) {
+      const failure = Array.isArray(recalcData?.failures) && recalcData.failures.length > 0 ? recalcData.failures[0] : null
+      const hint = failure ? `${failure.from} → ${failure.to}：${failure.reason}` : `共 ${failedCount} 段计算失败`
+      // 骑行单段超高高德规划上限（errcode 30007/超出限制）时给出拆分引导，提示用户补充途经点位后重算
+      const isRidingOverLimit = !!failure?.reason && /30007|超出限制/.test(failure.reason)
+      const tail = isRidingOverLimit
+        ? '；骑行单段超过高德单次规划上限（官方宣称 500km），请在中间补充途经点位拆分后重新优化'
+        : ''
+      ElMessage.warning(`路线已重新计算：成功 ${successCount} 段，失败 ${failedCount} 段（${hint}）${tail}`)
+    } else {
+      ElMessage.success(`路线已重新计算：成功 ${successCount} 段`)
+    }
   } catch (error) {
     console.warn('大屏路线重算失败，请检查分段路线重算接口。', error)
   } finally {
@@ -1041,7 +1264,7 @@ async function removeRoutebookPoint(point: TripRoutebookPoint): Promise<void> {
   await ElMessageBox.confirm(`删除“${point.pointName || '该点位'}”后将重新计算剩余路线，确定继续吗？`, '删除点位', { type: 'warning' })
   try {
     await deleteRoutebookPoint(currentRoutebookId, pointId)
-    if (points.value.length > 2) await recalculateRoutebookSegments(currentRoutebookId)
+    // 后端删除点位后已联动重算分段，这里只需重新拉取最新数据
     await reloadRouteAfterPointChange()
     ElMessage.success('点位已删除')
   } catch (error) {
@@ -1057,7 +1280,7 @@ async function moveRoutebookPoint(fromIndex: number, toIndex: number): Promise<v
   const sortPayload = reordered.map((point: TripRoutebookPoint, index: number) => ({ ...point, sortOrder: index }))
   try {
     await sortRoutebookPoints(routebookId.value, sortPayload)
-    if (sortPayload.length > 1) await recalculateRoutebookSegments(routebookId.value)
+    // 后端调整排序后已联动重算分段，这里只需重新拉取最新数据
     points.value = sortPayload
     selectedPoint.value = toIndex
     await reloadRouteAfterPointChange()
@@ -1072,8 +1295,351 @@ function handleMapTool(index: number): void {
   if (index === 0) openEditRoutebook()
   if (index === 1) enterPoiSearchMode()
   if (index === 2) optimizeRoute()
-  if (index === 3) showUnavailable('业务图层')
-  if (index === 4) showUnavailable('大屏设置')
+}
+
+/**
+ * 切换标准/卫星底图：卫星底图 + 道路网叠加层，切回时移除叠加层恢复标准底图
+ */
+function toggleMapLayer(): void {
+  if (!mapInstance || !amap) return
+  if (mapLayer.value === 'std') {
+    satLayer = new amap.TileLayer.Satellite()
+    roadLayer = new amap.TileLayer.RoadNet()
+    mapInstance.add([satLayer, roadLayer])
+    mapLayer.value = 'sat'
+  } else {
+    if (satLayer && roadLayer) mapInstance.remove([satLayer, roadLayer])
+    satLayer = undefined
+    roadLayer = undefined
+    mapLayer.value = 'std'
+  }
+}
+
+/** 展开/收起地图风格选择面板 */
+function toggleMapStyle(): void {
+  mapStyleOpen.value = !mapStyleOpen.value
+}
+
+/** 应用地图主题并记忆偏好：setMapStyle 支持 amap://styles/<内置主题> 与自定义样式 id；
+ *  特殊项 “卫星·写实” 切换到真实卫星影像瓦片底图（含路网文字），最接近写实效果，不参与记忆 */
+function applyMapStyle(key: string): void {
+  mapStyleKey.value = key
+  if (key !== 'satellite') {
+    try {
+      localStorage.setItem(ROADBOOK_MAP_STYLE_KEY, key)
+    } catch (error) {
+      console.warn('大屏保存地图风格偏好失败，本次不记忆。', error)
+    }
+  }
+  if (!mapInstance || !amap) return
+  if (key === 'satellite') {
+    mapInstance.setMapStyle('amap://styles/normal')
+    if (mapLayer.value !== 'sat') {
+      if (!satLayer || !roadLayer) {
+        satLayer = new amap.TileLayer.Satellite()
+        roadLayer = new amap.TileLayer.RoadNet()
+      }
+      mapInstance.add([satLayer, roadLayer])
+      mapLayer.value = 'sat'
+    }
+    mapStyleOpen.value = false
+    return
+  }
+  if (mapLayer.value === 'sat') {
+    if (satLayer && roadLayer) mapInstance.remove([satLayer, roadLayer])
+    satLayer = undefined
+    roadLayer = undefined
+    mapLayer.value = 'std'
+  }
+  mapInstance.setMapStyle(`amap://styles/${key}`)
+  mapStyleOpen.value = false
+}
+
+/** 天气描述到图标的映射，按关键词优先匹配 */
+const WEATHER_ICON_RULES: Array<[RegExp, string]> = [
+  [/晴/, '☀️'],
+  [/多云/, '⛅'],
+  [/阴/, '☁️'],
+  [/雷阵雨|雷雨/, '⛈️'],
+  [/暴雨|大雨/, '🌧️'],
+  [/雨/, '🌦️'],
+  [/雪/, '❄️'],
+  [/雾|霾/, '🌫️']
+]
+
+/**
+ * 开关天气浮层：开启时按地图中心逆地理解析城市，再查询该城市实时天气；
+ * 地图移动/缩放结束后延迟刷新，避免高频逆地理请求。
+ */
+function toggleWeather(): void {
+  weatherVisible.value = !weatherVisible.value
+  if (!mapInstance || !amap) return
+  if (weatherVisible.value) {
+    refreshMapWeather()
+    mapInstance.on('moveend', scheduleWeatherRefresh)
+    mapInstance.on('zoomend', scheduleWeatherRefresh)
+  } else {
+    weatherInfo.value = undefined
+    clearTimeout(weatherRefreshTimer)
+    mapInstance.off('moveend', scheduleWeatherRefresh)
+    mapInstance.off('zoomend', scheduleWeatherRefresh)
+  }
+}
+
+function scheduleWeatherRefresh(): void {
+  clearTimeout(weatherRefreshTimer)
+  weatherRefreshTimer = window.setTimeout(() => refreshMapWeather(), 700)
+}
+
+/**
+ * 逆地理解析统一入口：高德 JS API 2.0 将 v1 的 reverseGeocoder 改名为 getAddress
+ * （getReGeocode 为 Web 服务 REST 接口名，客户端不适用），按版本能力依次兼容。
+ */
+function reverseGeocodeLocation(lnglat: number[], callback: (status: string, result: any) => void): void {
+  if (!mapGeocoder) return
+  if (typeof mapGeocoder.getAddress === 'function') {
+    mapGeocoder.getAddress(lnglat, callback)
+  } else if (typeof mapGeocoder.getReGeocode === 'function') {
+    mapGeocoder.getReGeocode({ location: lnglat }, callback)
+  } else {
+    mapGeocoder.reverseGeocoder(lnglat, callback)
+  }
+}
+
+async function refreshMapWeather(): Promise<void> {
+  if (!mapInstance || !amap || !weatherVisible.value) return
+  const center = mapInstance.getCenter()
+  const lnglat = [center.getLng(), center.getLat()]
+  let city = ''
+  if (!mapGeocoder) {
+    await new Promise<void>((resolve) => {
+      amap.plugin('AMap.Geocoder', () => {
+        mapGeocoder = new amap.Geocoder()
+        resolve()
+      })
+    })
+  }
+  reverseGeocodeLocation(lnglat, (status: string, result: any) => {
+    const component = result?.regeocode?.addressComponent
+    if (status !== 'complete' || !component) {
+      console.warn(`大屏天气浮层逆地理解析失败（status=${status}），本次跳过天气刷新。`)
+      return
+    }
+    // 直辖市等场景 city 可能为空，依次回退到省份/区县作为展示城市
+    city = component.city || component.province || component.district || ''
+    if (!city) return
+    if (!mapWeatherPlugin) {
+      amap.plugin('AMap.Weather', () => {
+        mapWeatherPlugin = new amap.Weather()
+        queryLiveWeather(city)
+      })
+      return
+    }
+    queryLiveWeather(city)
+  })
+}
+
+function queryLiveWeather(city: string): void {
+  mapWeatherPlugin?.getLive(city, (errcode: number, data: any) => {
+    if (errcode || !data) {
+      console.warn(`大屏实时天气查询失败（errcode=${errcode}，城市=${city}），天气浮层暂不显示。`)
+      return
+    }
+    const weather = data.weather || ''
+    const icon = WEATHER_ICON_RULES.find(([rule]) => rule.test(weather))?.[1] || '🌤️'
+    weatherInfo.value = {
+      city: data.city || city,
+      weather,
+      temperature: data.temperature ?? '',
+      windDirection: data.windDirection || '',
+      windPower: data.windPower || '',
+      icon
+    }
+  })
+}
+
+/** 开关地图选点：开启后点击地图，逆地理解析选中位置并弹出确认卡片加入路线 */
+function toggleMapPick(): void {
+  mapPickEnabled.value = !mapPickEnabled.value
+  if (!mapInstance) return
+  if (mapPickEnabled.value) {
+    mapInstance.on('click', handleMapPickClick)
+  } else {
+    mapInstance.off('click', handleMapPickClick)
+    clearPoiSearchOverlays()
+    mapPickPending.value = false
+    mapPickPois.value = []
+    selectedPoi.value = undefined
+  }
+}
+
+/** 从周边地点候选中选择某个 POI：更新选中项并把标记移动到该 POI 准确位置 */
+function pickNearbyPoi(poi: PoiItem): void {
+  if (!amap || !mapInstance) return
+  const location = parsePoiLocation(poi.location)
+  if (!location) return
+  mapPickSearchCenter = location
+  selectedPoi.value = { ...poi, type: poi.type || '地点' }
+  clearPoiSearchOverlays()
+  const markerContent = createMapMarkerContent(routePoints.value.length + 1, poi.name || '未命名地点', 'search')
+  const marker = new amap.Marker({
+    position: location,
+    content: markerContent,
+    offset: new amap.Pixel(-17, -42),
+    title: poi.name
+  })
+  poiSearchOverlays.push(marker)
+  mapInstance.add(marker)
+}
+
+/** 在选点卡片内按关键词搜索点击坐标周边的地点，兜底逆地理候选为空的情况 */
+async function searchNearbyPick(): Promise<void> {
+  const keyword = mapPickKeyword.value.trim()
+  if (!amap || !mapPickSearchCenter.length || !keyword) return
+  if (!mapPickPlaceSearch) {
+    await new Promise<void>((resolve) => {
+      amap.plugin('AMap.PlaceSearch', () => {
+        mapPickPlaceSearch = new amap.PlaceSearch({ pageSize: 10, pageIndex: 1 })
+        resolve()
+      })
+    })
+  }
+  mapPickSearching.value = true
+  mapPickNoResult.value = false
+  try {
+    mapPickPlaceSearch.searchNearBy(keyword, mapPickSearchCenter, 5000, (status: string, result: any) => {
+      mapPickSearching.value = false
+      if (status !== 'complete' || !result?.poiList?.pois?.length) {
+        mapPickNoResult.value = true
+        mapPickPois.value = []
+        return
+      }
+      mapPickNoResult.value = false
+      mapPickPois.value = result.poiList.pois.map((p: any) => {
+        const loc = p.location?.lng !== undefined
+          ? [p.location.lng, p.location.lat]
+          : Array.isArray(p.location)
+            ? p.location
+            : mapPickSearchCenter
+        return {
+          id: p.id || `pick-search-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: p.name,
+          address: p.pname && p.cityname ? `${p.pname}${p.cityname}${p.adname || ''}${p.address || ''}` : p.address || '附近地点',
+          location: `${loc[0]},${loc[1]}`,
+          type: p.type || '地点'
+        } as PoiItem
+      })
+    })
+  } catch (error) {
+    mapPickSearching.value = false
+    console.warn(`大屏地图选点周边搜索失败：${String(error)}`)
+  }
+}
+
+/** 清空选点搜索关键词与候选，回到逆地理自带候选的初始态 */
+function resetNearbyPick(): void {
+  mapPickPois.value = []
+  mapPickNoResult.value = false
+}
+
+async function handleMapPickClick(event: any): Promise<void> {
+  if (!amap || !mapInstance || !event?.lnglat) return
+  // 点击落在路线点 marker 上时不进入加点流程（交给 marker 自身的详情浮层处理）
+  const clickTarget = event.originEvent?.target as HTMLElement | undefined
+  if (clickTarget?.closest?.('.amap-marker')) return
+  const lng = event.lnglat.getLng()
+  const lat = event.lnglat.getLat()
+  if (!mapGeocoder) {
+    await new Promise<void>((resolve) => {
+      amap.plugin('AMap.Geocoder', () => {
+        mapGeocoder = new amap.Geocoder()
+        resolve()
+      })
+    })
+  }
+  reverseGeocodeLocation([lng, lat], (status: string, result: any) => {
+    if (status !== 'complete' || !result?.regeocode) {
+      console.warn(`大屏地图选点逆地理解析失败（status=${status}），该位置未加入路线。`)
+      return
+    }
+    // 逆地理解析结果自带周边 POI 列表，取前几条作为「有名字」的候选地点
+    const nearbyPois = (result.regeocode.pois || [])
+      .filter((p: any) => p && p.name)
+      .slice(0, 6)
+      .map((p: any) => ({
+        id: p.id || `poi-pick-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: p.name,
+        address: p.address || result.regeocode.formattedAddress || '',
+        location: p.location || `${lng},${lat}`,
+        type: p.type || '地点'
+      } as PoiItem))
+    mapPickPois.value = nearbyPois
+    // 默认取第一个命名候选（命中地点直接有名字），无候选时回退到逆地理地址
+    const primary = nearbyPois[0]
+    const name = primary ? primary.name : result.regeocode.formattedAddress || `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+    const rawLoc = primary ? parsePoiLocation(primary.location) : [lng, lat]
+    const pickLng = rawLoc?.[0] ?? lng
+    const pickLat = rawLoc?.[1] ?? lat
+    mapPickSearchCenter = [pickLng, pickLat]
+    mapPickNoResult.value = false
+    clearPoiSearchOverlays()
+    const markerContent = createMapMarkerContent(routePoints.value.length + 1, name, 'search')
+    const marker = new amap.Marker({
+      position: [pickLng, pickLat],
+      content: markerContent,
+      offset: new amap.Pixel(-17, -42),
+      title: name
+    })
+    poiSearchOverlays.push(marker)
+    mapInstance.add(marker)
+    pendingAddDayNo.value = nextAddDayNo()
+    selectedPoi.value = primary ?? {
+      id: `map-pick-${Date.now()}`,
+      name,
+      address: result.regeocode.formattedAddress || '',
+      location: `${pickLng},${pickLat}`,
+      type: '地图选点'
+    } as PoiItem
+    mapPickPending.value = true
+  })
+}
+
+/** 关闭地图选点确认卡片，同时清掉选点标记与周边候选 */
+function dismissPendingPoi(): void {
+  mapPickPending.value = false
+  mapPickPois.value = []
+  selectedPoi.value = undefined
+  clearPoiSearchOverlays()
+}
+
+/** 计算添加点位时的默认所属天数：取现有最大天数，没有则从第 1 天开始 */
+function nextAddDayNo(): number {
+  const maxDay = points.value.reduce((max: number, point: TripRoutebookPoint) => Math.max(max, Number(point.dayNo || 0)), 0)
+  return maxDay > 0 ? maxDay : 1
+}
+
+/** 打开出发时间弹窗，回填当前路书已保存的时间 */
+function openDepartureDialog(): void {
+  if (!routebookId.value || !routebook.value) return
+  departureFormValue.value = routebook.value.startDate || ''
+  departureDialogOpen.value = true
+}
+
+/** 保存出发时间：合并进当前路书并更新接口与本地展示，时间变更不重算路线 */
+async function saveDeparture(): Promise<void> {
+  if (!routebookId.value || !routebook.value) return
+  const value = departureFormValue.value || undefined
+  departureSaving.value = true
+  try {
+    await updateRoutebook({ ...routebook.value, startDate: value })
+    routebook.value = { ...routebook.value, startDate: value }
+    departureDialogOpen.value = false
+    ElMessage.success(value ? '出发时间已更新' : '已清除出发时间')
+  } catch (error) {
+    console.warn('大屏保存出发时间失败，请检查路书更新接口。', error)
+  } finally {
+    departureSaving.value = false
+  }
 }
 
 function enterPoiSearchMode(): void {
@@ -1091,6 +1657,7 @@ function enterPoiSearchMode(): void {
   keyword.value = ''
   pointType.value = points.value.length === 0 ? 'START' : 'WAYPOINT'
   pointCandidates.value = []
+  pendingAddDayNo.value = nextAddDayNo()
   selectedPoi.value = undefined
   clearLocationOverlays()
   locationMessage.value = ''
@@ -1220,9 +1787,19 @@ async function addSelectedPoi(): Promise<void> {
       lng: location[0],
       lat: location[1],
       sortOrder: points.value.length,
-      source: 'AMAP'
+      source: 'AMAP',
+      dayNo: pendingAddDayNo.value
     })
     await reloadRouteAfterPointChange()
+    // 地图选点模式：加入成功后关闭确认卡片并清理选点标记，选点开关保持开启可连续添加
+    if (mapPickPending.value) {
+      mapPickPending.value = false
+      mapPickPois.value = []
+      selectedPoi.value = undefined
+      clearPoiSearchOverlays()
+      ElMessage.success(`“${item.name || '地点'}”已加入路线`)
+      return
+    }
     pointCandidates.value = pointCandidates.value.filter((candidate: PoiItem) => candidate !== item)
     selectedPoi.value = undefined
     pointType.value = 'WAYPOINT'
@@ -1274,7 +1851,7 @@ async function initializeMap(): Promise<void> {
     mapInstance = new amap.Map(mapContainerRef.value, {
       center: [104.195397, 35.86166],
       zoom: 5,
-      mapStyle: 'amap://styles/normal',
+      mapStyle: `amap://styles/${mapStyleKey.value}`,
       resizeEnable: true,
       viewMode: '2D',
       showLabel: true,
@@ -1284,6 +1861,9 @@ async function initializeMap(): Promise<void> {
     mapInstance.on('zoomchange', syncMapZoom)
     mapLoading.value = false
     applyInitialMapView()
+    // 天气与选点默认开启：进入大屏即显示实时天气、可直接点地图加点，无需先点开关
+    toggleWeather()
+    toggleMapPick()
   } catch (error) {
     mapLoading.value = false
     mapError.value = error instanceof Error
@@ -1314,6 +1894,8 @@ function renderRoute(): void {
   const validPoints = points.value.filter((point: TripRoutebookPoint) => hasCoordinates(point))
   pointMarkers = validPoints.map((point: TripRoutebookPoint, index: number) => {
     const markerContent = createMapMarkerContent(index + 1, point.pointName || `路线点 ${index + 1}`, 'route')
+    // 点击地图路线点 marker：聚焦该点并弹出点位详情浮层（可上移/下移/删除）
+    markerContent.addEventListener('click', () => handleMarkerClick(index))
     const marker = new amap.Marker({
       position: [Number(point.lng), Number(point.lat)],
       content: markerContent,
@@ -1357,6 +1939,43 @@ function focusRoutePoint(index: number): void {
   if (!mapInstance || !hasCoordinates(point)) return
   mapInstance.setZoomAndCenter(Math.max(Number(mapInstance.getZoom()), 14), [Number(point.lng), Number(point.lat)], false, 300)
   syncMapZoom()
+}
+
+/** 点击地图路线点 marker：聚焦该点并弹出点位详情浮层 */
+function handleMarkerClick(index: number): void {
+  detailPointIndex.value = index
+  focusRoutePoint(index)
+}
+
+/** 关闭地图点位详情浮层 */
+function closePointDetail(): void {
+  detailPointIndex.value = -1
+}
+
+/** 在地图点位详情浮层中打开编辑弹窗：复用 ⋯ 菜单里的点位编辑（名称/类型等） */
+function editDetailPoint(): void {
+  const point = points.value[detailPointIndex.value]
+  if (!point) return
+  pointEditForm.value = { ...point }
+  pointEditDialogOpen.value = true
+}
+
+/** 在点位详情浮层中上移/下移该点位：移动成功后重算路线并关闭浮层（下标语义已变化） */
+async function moveDetailPoint(direction: -1 | 1): Promise<void> {
+  const fromIndex = detailPointIndex.value
+  if (fromIndex < 0) return
+  const toIndex = fromIndex + direction
+  if (toIndex < 0 || toIndex >= points.value.length) return
+  await moveRoutebookPoint(fromIndex, toIndex)
+  detailPointIndex.value = -1
+}
+
+/** 在点位详情浮层中删除该点位：删除成功后联动重算并关闭浮层 */
+async function removeDetailPoint(): Promise<void> {
+  const point = points.value[detailPointIndex.value]
+  if (!point) return
+  detailPointIndex.value = -1
+  await removeRoutebookPoint(point)
 }
 
 function hasCoordinates(point?: TripRoutebookPoint): boolean {
@@ -1769,10 +2388,10 @@ button {
   position: absolute;
   z-index: 8;
   top: 20px;
-  bottom: 128px;
+  bottom: 20px;
   left: 12px;
   display: flex;
-  width: 300px;
+  width: 316px;
   min-height: 510px;
   border-color: #e4e9f2;
   border-radius: 12px;
@@ -1783,7 +2402,7 @@ button {
 }
 
 .route-heading {
-  padding: 18px 16px 12px;
+  padding: 12px 16px 8px;
 }
 
 .route-heading-main,
@@ -1861,8 +2480,8 @@ button {
 
 .route-summary {
   display: grid;
-  margin: 0 16px;
-  padding: 12px 0;
+  margin: 0 12px;
+  padding: 7px 0;
   border-radius: 10px;
   grid-template-columns: repeat(3, 1fr);
   background: #f6f8fc;
@@ -1878,7 +2497,7 @@ button {
   top: 50%;
   left: 0;
   width: 1px;
-  height: 26px;
+  height: 20px;
   content: "";
   background: #e4e9f2;
   transform: translateY(-50%);
@@ -1891,56 +2510,79 @@ button {
 
 .route-summary strong {
   color: #172033;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .route-summary span {
-  margin-top: 5px;
+  margin-top: 2px;
   color: #667085;
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.route-time {
-  display: flex;
-  min-height: 44px;
-  margin: 0 16px;
+.departure-chip {
+  display: inline-flex;
+  max-width: 150px;
+  height: 24px;
+  padding: 0 10px;
+  flex: none;
   align-items: center;
-  gap: 8px;
-  color: #667085;
+  gap: 4px;
+  border: 1px solid color-mix(in srgb, var(--screen-primary) 22%, var(--screen-border));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--screen-primary) 78%, var(--roadbook-text-regular));
+  background: color-mix(in srgb, var(--screen-primary) 6%, var(--roadbook-panel-bg));
   font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.route-time .el-icon {
-  color: var(--screen-muted);
-  font-size: 15px;
+.departure-chip:hover {
+  border-color: color-mix(in srgb, var(--screen-primary) 55%, var(--screen-border));
+  color: var(--screen-primary);
+  background: color-mix(in srgb, var(--screen-primary) 10%, var(--roadbook-panel-bg));
 }
 
-.route-time strong {
-  color: #172033;
-  font-weight: 600;
+.departure-chip .el-icon {
+  font-size: 13px;
+}
+
+.departure-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .route-tabs {
   display: grid;
-  margin: 0 16px;
-  border-bottom: 1px solid #e4e9f2;
+  margin: 4px 12px 8px;
+  padding: 3px;
+  border: 1px solid var(--screen-border);
+  border-radius: 10px;
   grid-template-columns: 1fr 1fr;
+  background: color-mix(in srgb, var(--screen-primary) 4%, transparent);
 }
 
 .route-tabs button {
-  height: 44px;
+  height: 30px;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-radius: 8px;
   color: #667085;
   cursor: pointer;
   background: transparent;
-  font-size: 13px;
+  font-size: 12px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.route-tabs button:hover {
+  color: var(--screen-primary);
 }
 
 .route-tabs button.active {
-  border-bottom-color: var(--screen-primary);
+  border: 0;
   color: var(--screen-primary);
+  background: var(--roadbook-panel-bg);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 10%);
   font-weight: 700;
 }
 
@@ -2143,22 +2785,65 @@ button {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 5px;
+  gap: 2px;
 }
 
-.node-drag-handle,
-.point-more {
-  color: #98a2b3;
-  cursor: grab;
-  font-size: 15px;
-}
-
-.point-more {
+/* 拖拽手柄、快捷上移/下移、更多菜单统一为圆角图标按钮：深色图标 + 浅灰底板，
+   确保在白色卡片上清晰可见（避免图标颜色继承异常而显示为白色/透明） */
+.node-card-actions .el-icon {
+  border-radius: 6px;
+  padding: 5px 6px;
+  color: #434d62;
+  background: #eef1f6;
   cursor: pointer;
+  font-size: 15px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+/* 显式锁定图标 SVG 尺寸、禁止 flex 收缩，避免图标被压扁成细条（表现为“一根 -”）
+   工具栏图标有自己的 20px 规则不受影响 */
+.node-card-actions .el-icon svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.node-card-actions .el-icon:hover {
+  color: var(--screen-primary);
+  background: color-mix(in srgb, var(--screen-primary) 12%, #ffffff);
+}
+
+.node-card-actions .node-delete {
+  color: #e5484d;
+  background: #fdeeef;
+}
+
+.node-card-actions .node-delete:hover {
+  color: #e5484d;
+  background: color-mix(in srgb, #e5484d 14%, #ffffff);
+}
+
+.node-drag-handle {
+  cursor: grab;
 }
 
 .node-drag-handle:active {
   cursor: grabbing;
+}
+
+.node-move.is-disabled {
+  color: #cbd2e0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.node-move.is-disabled:hover {
+  color: #cbd2e0;
+  background: transparent;
+}
+
+.point-more:hover {
+  color: var(--screen-primary);
 }
 
 .route-add-prompt {
@@ -2396,7 +3081,8 @@ button {
   box-shadow: inset 3px 0 0 var(--screen-primary);
 }
 
-.map-toolbar button:not(:last-child)::after {
+.map-toolbar-tools button:not(:last-child)::after,
+.map-toolbar-toggles button:not(:last-child)::after {
   position: absolute;
   right: 9px;
   bottom: 0;
@@ -2404,6 +3090,96 @@ button {
   height: 1px;
   content: "";
   background: var(--screen-border);
+}
+
+/* 工具栏第二组开关（卫星图/天气/选点/风格）与功能按钮分组，用分隔线区隔 */
+.map-toolbar-toggles {
+  position: relative;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--screen-border);
+}
+
+/* 地图风格选择面板：从工具栏右缘向右展开到地图区，避免向左溢出被左侧路书面板遮住 */
+.map-style-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  left: calc(100% + 8px);
+  width: 232px;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.map-style-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.map-style-panel__head strong {
+  color: #182033;
+  font-size: 13px;
+}
+
+.map-style-panel__head button {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  color: #68748a;
+  background: #f0f3f8;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.map-style-panel__head button:hover {
+  color: #e5484d;
+  background: #fdeeef;
+}
+
+.map-style-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.map-style-panel__grid button {
+  display: flex;
+  padding: 6px 0 5px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.map-style-panel__grid button:hover {
+  border-color: color-mix(in srgb, var(--screen-primary) 40%, transparent);
+}
+
+.map-style-panel__grid button.selected {
+  border-color: var(--screen-primary);
+  background: color-mix(in srgb, var(--screen-primary) 6%, #ffffff);
+}
+
+.map-style-swatch {
+  width: 44px;
+  height: 26px;
+  border: 1px solid rgba(24, 32, 51, 0.08);
+  border-radius: 6px;
+}
+
+.map-style-name {
+  color: #3c4a5d;
+  font-size: 11px;
+}
+
+.map-toolbar-toggles button {
+  height: 52px;
 }
 
 .map-toolbar .el-icon {
@@ -2536,6 +3312,43 @@ button {
   text-align: center;
 }
 
+/* 天气浮层：半透明玻璃卡片展示地图中心城市的实时天气，固定在地图右上角 */
+.map-weather {
+  position: absolute;
+  z-index: 6;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  min-width: 150px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  align-items: center;
+  gap: 9px;
+}
+
+.map-weather-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.map-weather-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.map-weather-meta strong {
+  color: var(--roadbook-text-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.map-weather-meta small {
+  color: var(--screen-muted);
+  font-size: 11px;
+  line-height: 15px;
+}
+
 .locate-button {
   position: absolute;
   z-index: 6;
@@ -2561,9 +3374,9 @@ button {
   z-index: 8;
   top: 20px;
   right: 16px;
-  bottom: 128px;
+  bottom: 20px;
   display: flex;
-  width: 320px;
+  width: 336px;
   min-height: 510px;
   border-radius: 12px;
   flex-direction: column;
@@ -2756,78 +3569,6 @@ button {
   cursor: pointer;
   background: transparent;
   font-size: 12px;
-}
-
-.trip-metrics {
-  position: absolute;
-  z-index: 9;
-  right: 96px;
-  bottom: 16px;
-  left: 96px;
-  display: grid;
-  height: 96px;
-  padding: 12px 18px;
-  border-radius: 12px;
-  grid-template-columns: repeat(6, 1fr);
-}
-
-.trip-metrics article {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.trip-metrics article + article {
-  border-left: 1px solid var(--screen-border);
-}
-
-.metric-icon {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  place-items: center;
-  border-radius: 50%;
-  font-size: 20px;
-  background: var(--roadbook-panel-muted);
-}
-
-.metric-slate { color: var(--screen-muted); }
-.metric-orange { color: var(--roadbook-warning); }
-.metric-green { color: var(--roadbook-success); }
-.metric-purple { color: var(--roadbook-secondary); }
-.metric-blue { color: var(--roadbook-primary); }
-
-.trip-metrics small,
-.trip-metrics strong,
-.trip-metrics p {
-  display: block;
-}
-
-.trip-metrics small {
-  color: var(--screen-muted);
-  font-size: 10px;
-}
-
-.trip-metrics strong {
-  margin-top: 7px;
-  font-size: 20px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.trip-metrics em {
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 500;
-}
-
-.trip-metrics p {
-  margin: 8px 0 0;
-  color: var(--screen-muted);
-  font-size: 9px;
 }
 
 button:disabled {
@@ -3028,6 +3769,116 @@ button:disabled {
   color: var(--roadbook-warning);
 }
 
+/* 地图点位详情浮层：点击路线点 marker 弹出，展示点位信息并提供移动/删除操作 */
+.map-point-detail {
+  position: absolute;
+  z-index: 6;
+  top: 116px;
+  right: 20px;
+  width: min(300px, calc(100% - 300px));
+  min-width: 244px;
+  padding: 14px 16px;
+  border-radius: 13px;
+}
+
+.map-point-detail header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.map-point-detail header span {
+  color: var(--screen-primary);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.map-point-detail h3 {
+  margin: 4px 0 0;
+  color: #182033;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.map-point-detail header > button {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  color: #68748a;
+  background: #f0f3f8;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.map-point-detail header > button:hover {
+  color: #e5484d;
+  background: #fdeeef;
+}
+
+.map-point-detail > p {
+  margin: 8px 0 6px;
+  color: var(--roadbook-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.map-point-detail-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.map-point-detail-tags span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--screen-primary);
+  background: color-mix(in srgb, var(--screen-primary) 8%, #ffffff);
+  font-size: 11px;
+}
+
+.map-point-detail footer {
+  display: flex;
+  gap: 6px;
+}
+
+.map-point-detail footer button {
+  flex: 1;
+  padding: 6px 0;
+  border: 1px solid #dfe3ea;
+  border-radius: 7px;
+  color: #3c4a5d;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.map-point-detail footer button:hover:not(:disabled) {
+  border-color: var(--screen-primary);
+  color: var(--screen-primary);
+  background: color-mix(in srgb, var(--screen-primary) 5%, #ffffff);
+}
+
+.map-point-detail footer button.danger {
+  border-color: #f6d4d4;
+  color: #e5484d;
+}
+
+.map-point-detail footer button.danger:hover:not(:disabled) {
+  border-color: #e5484d;
+  background: #fdeeef;
+}
+
+.map-point-detail footer button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .poi-result-card {
   position: absolute;
   z-index: 13;
@@ -3081,6 +3932,95 @@ button:disabled {
   line-height: 1.5;
 }
 
+.poi-pick-wrap {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.poi-pick-search {
+  display: flex;
+  gap: 6px;
+}
+
+.poi-pick-search .el-input {
+  flex: 1;
+}
+
+.poi-pick-search > button {
+  flex-shrink: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: var(--screen-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.poi-pick-search > button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.poi-pick-list {
+  display: grid;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.poi-pick-title {
+  color: var(--screen-primary);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.poi-pick-empty {
+  margin: 0;
+  color: var(--roadbook-text-secondary);
+  font-size: 12px;
+}
+
+.poi-pick-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--roadbook-panel-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.poi-pick-item:hover {
+  border-color: var(--screen-primary);
+}
+
+.poi-pick-item.active {
+  border-color: var(--screen-primary);
+  background: color-mix(in srgb, var(--screen-primary) 12%, transparent);
+}
+
+.poi-pick-name {
+  color: var(--roadbook-text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.poi-pick-item small {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--roadbook-text-secondary);
+  font-size: 10px;
+}
+
 .poi-result-meta {
   gap: 8px;
 }
@@ -3111,6 +4051,27 @@ button:disabled {
   cursor: pointer;
   background: var(--screen-primary);
   font-size: 12px;
+}
+
+.poi-add-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  color: var(--screen-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.poi-add-day .el-input-number {
+  width: 88px;
+}
+
+.departure-tip {
+  margin: 0;
+  color: var(--screen-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 :global(.map-point-marker) {
@@ -3209,33 +4170,12 @@ button:disabled {
   .header-actions button {
     padding-inline: 9px;
   }
-
-  .trip-metrics {
-    right: 60px;
-    left: 60px;
-  }
-
-  .trip-metrics article {
-    gap: 8px;
-  }
-
-  .metric-icon {
-    width: 38px;
-    height: 38px;
-    flex-basis: 38px;
-    font-size: 19px;
-  }
 }
 
 @media (max-height: 870px) {
   .route-panel,
   .recommend-panel {
-    bottom: 142px;
-  }
-
-  .trip-metrics {
-    bottom: 16px;
-    height: 102px;
+    bottom: 20px;
   }
 
   .route-list li {

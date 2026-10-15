@@ -37,3 +37,16 @@ export interface AmapNavigationUriRequest {
   mode?: string
   policy?: string
 }
+
+/** 高德地理编码请求：地址转经纬度。 */
+export interface AmapGeocodeQuery {
+  address: string
+  city?: string
+}
+
+/** 高德逆地理编码请求：经纬度转地址。 */
+export interface AmapRegeoQuery {
+  lng: number
+  lat: number
+  radius?: number
+}

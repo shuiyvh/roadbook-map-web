@@ -25,6 +25,10 @@ export interface TripRoutebook extends BaseEntity {
   ownerUserId?: number
   routeMode?: string
   routePolicy?: string
+  /** 车牌号（小汽车路线规划限行规避用，可空）。 */
+  plateNumber?: string
+  /** 出发时间（大屏展示与行程参考，可空）。 */
+  startDate?: string
   templateFlag?: number
   templateName?: string
   templateRemark?: string

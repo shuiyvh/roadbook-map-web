@@ -55,6 +55,20 @@ export const constantRoutes = [
     meta: { title: '路书大屏', noCache: true }
   },
   {
+    path: '/s/:shareCode',
+    component: () => import('@/views/trip/share/Public.vue'),
+    name: 'SharePublicPage',
+    hidden: true,
+    meta: { title: '分享路书', noCache: true }
+  },
+  {
+    path: '/invite/:inviteCode',
+    component: () => import('@/views/trip/invite/Public.vue'),
+    name: 'InvitePublicPage',
+    hidden: true,
+    meta: { title: '协作邀请', noCache: true }
+  },
+  {
     path: '/401',
     component: () => import('@/views/error/401.vue'),
     hidden: true

@@ -37,3 +37,14 @@ export interface TripRoutebookSegment extends BaseEntity {
   routePolicy?: string
   rawResponse?: string
 }
+
+/** 路书点位评论。 */
+export interface TripPointComment extends BaseEntity {
+  id?: number
+  routebookId?: number
+  pointId?: number
+  userId?: number
+  userName?: string
+  commentContent?: string
+  deleted?: number
+}

@@ -45,6 +45,12 @@ export default defineConfig(({ mode, command }) => {
       port: 18092,
       host: true,
       open: true,
+      watch: {
+        // 忽略编辑器/工具原子替换产生的临时目录与临时文件，避免 Windows 下 EBUSY 崩掉 dev server
+        ignored: [/\.tmpdir[/\\]/, /\.tmp$/],
+        // 等待文件写入稳定后再触发更新，减少中间态文件事件
+        awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
+      },
       proxy: {
         // https://cn.vitejs.dev/config/#server-proxy
         '/dev-api': {
